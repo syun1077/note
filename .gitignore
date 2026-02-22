@@ -1,0 +1,8 @@
+.env
+__pycache__/
+*.pyc
+auth_state.json
+auth_state_*.json
+screenshots/
+*.log
+.venv/
