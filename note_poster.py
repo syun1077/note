@@ -237,6 +237,94 @@ async def _upload_thumbnail(page: Page, image_path: Path) -> bool:
     return False
 
 
+async def _insert_image(page: Page, image_path: Path) -> bool:
+    """
+    エディタのカーソル位置に画像をインライン挿入する。
+    複数の方法を試みて、成功したら True を返す。
+    """
+    print(f"   🖼️  画像挿入中: {image_path.name}")
+
+    # カーソルを新しい行へ移動
+    await page.keyboard.press("Enter")
+    await page.wait_for_timeout(800)
+
+    # Strategy 1: hidden な file input に直接セット
+    for selector in [
+        'input[type="file"][accept*="image"]',
+        'input[type="file"]',
+    ]:
+        locator = page.locator(selector)
+        if await locator.count() > 0:
+            try:
+                await locator.first.set_input_files(str(image_path))
+                await page.wait_for_timeout(4000)
+                await take_screenshot(page, f"img_{image_path.stem}")
+                print(f"   ✅ 画像挿入完了（hidden input）")
+                await page.keyboard.press("Enter")
+                return True
+            except Exception:
+                pass
+
+    # Strategy 2: エディタ左の "+" ブロック追加ボタン → 画像選択
+    plus_selectors = [
+        '[class*="addButton"]',
+        '[class*="AddButton"]',
+        '[class*="insertBlock"]',
+        '[class*="InsertBlock"]',
+        'button[aria-label*="ブロック追加"]',
+        'button[aria-label*="追加"]',
+        '[data-testid*="add-block"]',
+    ]
+    for sel in plus_selectors:
+        el = page.locator(sel).first
+        try:
+            if await el.is_visible(timeout=2000):
+                async with page.expect_file_chooser(timeout=8000) as fc_info:
+                    await el.click()
+                    await page.wait_for_timeout(500)
+                    img_btn = page.locator(
+                        'button:has-text("画像"), [aria-label*="画像"], [data-testid*="image"]'
+                    ).first
+                    if await img_btn.is_visible(timeout=2000):
+                        await img_btn.click()
+                fc = await fc_info.value
+                await fc.set_files(str(image_path))
+                await page.wait_for_timeout(4000)
+                await take_screenshot(page, f"img_{image_path.stem}")
+                print(f"   ✅ 画像挿入完了（+ボタン経由）")
+                await page.keyboard.press("Enter")
+                return True
+        except Exception:
+            pass
+
+    # Strategy 3: ツールバーの画像ボタン
+    toolbar_img_selectors = [
+        'button[aria-label="画像"]',
+        'button[title="画像"]',
+        '[class*="toolbar"] button[class*="image"]',
+        '[class*="toolbar"] button[class*="Image"]',
+    ]
+    for sel in toolbar_img_selectors:
+        el = page.locator(sel).first
+        try:
+            if await el.is_visible(timeout=2000):
+                async with page.expect_file_chooser(timeout=5000) as fc_info:
+                    await el.click()
+                fc = await fc_info.value
+                await fc.set_files(str(image_path))
+                await page.wait_for_timeout(4000)
+                await take_screenshot(page, f"img_{image_path.stem}")
+                print(f"   ✅ 画像挿入完了（ツールバー経由）")
+                await page.keyboard.press("Enter")
+                return True
+        except Exception:
+            pass
+
+    await take_screenshot(page, f"img_failed_{image_path.stem}")
+    print(f"   ⚠️ 画像挿入をスキップしました（UIが見つかりませんでした）")
+    return False
+
+
 async def post_article(page: Page, title: str, body: str, hashtags: list[str], as_draft: bool = False, thumbnail_path: Path = None) -> bool:
     """
     note.comに記事を投稿する
@@ -321,30 +409,42 @@ async def post_article(page: Page, title: str, body: str, hashtags: list[str], a
     # 本文を入力（段落ごと）
     await body_input.click()
     await page.wait_for_timeout(500)
-    
+
+    # 画像マーカーを事前にダウンロード
+    from image_fetcher import fetch_images_for_article, IMAGE_MARKER_PATTERN
+    article_images = fetch_images_for_article(body)
+
     # 有料記事のマーカーを処理
     body_parts = body.split("---ここから有料---")
     free_body = body_parts[0] if len(body_parts) > 1 else body
     paid_body = body_parts[1] if len(body_parts) > 1 else None
-    
+
+    async def _type_paragraphs(text: str):
+        """段落を入力し、[IMAGE:keyword] マーカーで画像を挿入する"""
+        paragraphs = text.split("\n")
+        for i, paragraph in enumerate(paragraphs):
+            stripped = paragraph.strip()
+            # 画像マーカー行
+            img_match = IMAGE_MARKER_PATTERN.match(stripped)
+            if img_match:
+                keyword = img_match.group(1).strip()
+                img_path = article_images.get(keyword)
+                if img_path:
+                    await _insert_image(page, img_path)
+                continue  # マーカー行は Enter しない
+            if stripped:
+                await page.keyboard.type(paragraph, delay=10)
+            await page.keyboard.press("Enter")
+            if i > 0 and i % 50 == 0:
+                print(f"   📝 本文入力中... {i}/{len(paragraphs)} 行")
+
     # 無料パートを入力
-    paragraphs = free_body.split("\n")
-    for i, paragraph in enumerate(paragraphs):
-        if paragraph.strip():
-            await page.keyboard.type(paragraph, delay=10)
-        await page.keyboard.press("Enter")
-        
-        if i > 0 and i % 50 == 0:
-            print(f"   📝 本文入力中... {i}/{len(paragraphs)} 行")
-    
+    await _type_paragraphs(free_body)
+
     # 有料パートがある場合
     if paid_body and ENABLE_PAID_ARTICLE:
         print("   💰 有料パート入力中...")
-        paid_paragraphs = paid_body.split("\n")
-        for i, paragraph in enumerate(paid_paragraphs):
-            if paragraph.strip():
-                await page.keyboard.type(paragraph, delay=10)
-            await page.keyboard.press("Enter")
+        await _type_paragraphs(paid_body)
     
     total_lines = len(free_body.split("\n")) + (len(paid_body.split("\n")) if paid_body else 0)
     print(f"   ✅ 本文入力完了 ({total_lines} 行)")

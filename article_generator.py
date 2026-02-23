@@ -71,10 +71,16 @@ def generate_article(theme: str = None, used_themes: set = None) -> dict:
 スタイル要件:
 {ARTICLE_STYLE}
 
+【画像について】
+- 記事の本文中に画像を2〜3枚挿入してください
+- 画像を入れたい箇所（見出しの直後など）に [IMAGE:英語キーワード] の形式で1行で記述してください
+- 例: [IMAGE:side hustle smartphone]、[IMAGE:investment growth chart]
+- キーワードは画像検索に使うので英語2〜4単語で具体的に書いてください
+
 出力形式（このJSONのみを返す）:
 {{
   "title": "記事タイトル（キャッチーで30〜50文字）",
-  "body": "記事本文（Markdown形式、3000文字以上）",
+  "body": "記事本文（Markdown形式、3000文字以上、[IMAGE:keyword]マーカー含む）",
   "hashtags": ["タグ1", "タグ2", "タグ3", "タグ4", "タグ5"]
 }}"""
 

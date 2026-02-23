@@ -45,6 +45,8 @@ jobs:
           NOTE_PASSWORD_2: ${{ secrets.NOTE_PASSWORD_2 }}
           # Groq API（無料・記事生成用）
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          # Unsplash API（記事画像取得用・任意）
+          UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
           # 投稿設定
           POST_AS_DRAFT: ${{ secrets.POST_AS_DRAFT || 'false' }}
           # 通知（未設定ならスキップ）
