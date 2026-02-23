@@ -396,17 +396,30 @@ async def _publish(page: Page, hashtags: list[str] = None) -> bool:
     """記事を公開する"""
     print("   🚀 記事を公開中...")
 
-    # APIエラーを監視
+    # ネットワーク監視（最初から全て1つのリスナーで管理）
     api_errors: list[str] = []
+    published_via_api: list[str] = []   # draft=false API 成功 → 公開確定
+    all_publish_requests: list[str] = []
 
     async def _on_response(response):
-        if "publish" in response.url and response.status >= 400:
-            api_errors.append(f"HTTP {response.status}: {response.url}")
+        url = response.url
+        status = response.status
+        if "note.com" not in url:
+            return
+        if status >= 400 and "publish" in url:
+            api_errors.append(f"HTTP {status}: {url}")
+        if status in (200, 201):
+            if any(k in url for k in ("publish", "notes/n", "create")):
+                all_publish_requests.append(f"HTTP {status}: {url}")
+            # draft=false → 記事が公開されたことを意味する
+            if "draft=false" in url:
+                published_via_api.append(url)
+                print(f"   ✅ 公開API検出 (draft=false → 200)")
 
     page.on("response", _on_response)
 
     try:
-        # 「公開」ボタンをクリック（/publish/ ページへ遷移）
+        # 「公開」ボタンをクリック（/publish/ ページへ遷移 or 直接公開）
         publish_button_selectors = [
             'button:has-text("公開設定")',
             'button:has-text("公開")',
@@ -417,12 +430,10 @@ async def _publish(page: Page, hashtags: list[str] = None) -> bool:
         publish_button = await _find_element(page, publish_button_selectors, "公開設定ボタン")
         if publish_button:
             await _safe_click(page, publish_button, "公開設定ボタン")
-            # /publish/ ページへ遷移するまで待つ
             try:
                 await page.wait_for_url("**/publish/**", timeout=8000)
             except Exception:
                 pass
-            # ページが完全に読み込まれるまで待つ
             try:
                 await page.wait_for_load_state("networkidle", timeout=8000)
             except Exception:
@@ -430,7 +441,25 @@ async def _publish(page: Page, hashtags: list[str] = None) -> bool:
             await page.wait_for_timeout(1000)
             await take_screenshot(page, "08_publish_dialog")
 
-        # 公開設定ページでハッシュタグを入力（keyboard.typeでReact状態を正しく更新）
+        # draft=false API が既に成功している場合（「公開」クリックで直接公開）
+        if published_via_api:
+            print(f"   ✅ 記事が公開されました（API確認）")
+            await take_screenshot(page, "09_published")
+            return True
+
+        # ページ上のボタンを全て確認（デバッグ）
+        try:
+            btn_texts = []
+            for b in await page.locator("button").all():
+                t = (await b.text_content() or "").strip()
+                if t:
+                    btn_texts.append(t)
+            if btn_texts:
+                print(f"   📋 /publish/ ページのボタン: {btn_texts[:15]}")
+        except Exception:
+            pass
+
+        # 公開設定ページでハッシュタグを入力
         if hashtags:
             tag_input_dialog = page.locator(
                 'input[placeholder*="タグ"], input[placeholder*="ハッシュタグ"], input[placeholder*="tag"]'
@@ -445,7 +474,6 @@ async def _publish(page: Page, hashtags: list[str] = None) -> bool:
                     await page.wait_for_timeout(500)
                     await page.keyboard.press("Enter")
                     await page.wait_for_timeout(500)
-                # タグ入力欄からフォーカスを外す
                 await page.keyboard.press("Escape")
                 await page.wait_for_timeout(1000)
                 print("   ✅ タグ入力完了")
@@ -456,34 +484,27 @@ async def _publish(page: Page, hashtags: list[str] = None) -> bool:
         if ENABLE_PAID_ARTICLE:
             await _set_paid_article(page)
 
-        # 本人確認モーダルなどを閉じる
+        # 本人確認モーダルを閉じる
         await _close_identification_modal(page)
 
-        # クリック前スクリーンショット（デバッグ用）
         await take_screenshot(page, "08c_before_final_click")
 
-        # 全ネットワーク活動を記録（診断用）
-        all_publish_requests: list[str] = []
-        async def _on_any_response(response):
-            if "note.com" in response.url and response.status in (200, 201):
-                if any(k in response.url for k in ("publish", "note", "create")):
-                    all_publish_requests.append(f"HTTP {response.status}: {response.url}")
-        page.on("response", _on_any_response)
-
-        # 最終「投稿する」ボタン: dispatch_event で確実にクリック
+        # 最終「投稿する」ボタン（拡張セレクタ）
         final_publish_selectors = [
             'button:has-text("投稿する")',
             'button:has-text("公開する")',
+            'button:has-text("今すぐ公開する")',
+            'button:has-text("今すぐ公開")',
+            'button:has-text("確定する")',
             'button[class*="submit"]',
             'button[class*="Submit"]',
+            'button[type="submit"]',
         ]
 
         final_button = await _find_element(page, final_publish_selectors, "最終公開ボタン")
         if final_button:
-            # 1. 通常クリック
             await _safe_click(page, final_button, "最終公開ボタン")
             await page.wait_for_timeout(500)
-            # 2. dispatchEvent（ポインターイベントをバイパス）
             print("   → dispatchEvent クリックも実行...")
             try:
                 await final_button.dispatch_event("click")
@@ -492,13 +513,19 @@ async def _publish(page: Page, hashtags: list[str] = None) -> bool:
         else:
             print("   ⚠️ 最終公開ボタンが見つかりませんでした")
 
-        # ネットワーク処理の完了を待つ
+        # ネットワーク処理完了を待つ
         try:
             await page.wait_for_load_state("networkidle", timeout=15000)
         except Exception:
             pass
 
-        # URL が /publish/ から遷移するまで最大20秒待つ
+        # APIベースで再確認
+        if published_via_api:
+            print(f"   ✅ 記事が公開されました（API確認）")
+            await take_screenshot(page, "09_published")
+            return True
+
+        # URL変化で確認
         try:
             await page.wait_for_url(
                 lambda url: "/publish/" not in url and "/notes/new" not in url,
@@ -508,34 +535,15 @@ async def _publish(page: Page, hashtags: list[str] = None) -> bool:
         except Exception:
             print("   ⚠️ 20秒以内にページ遷移が確認できませんでした")
 
-            # Toast/alert 系エラーのみ検出（テキストが5文字以上のもの）
-            try:
-                for sel in ['[role="alert"]', '[class*="Toast"]', '[class*="toast"]']:
-                    el = page.locator(sel)
-                    if await el.count() > 0:
-                        txt = (await el.first.text_content() or "").strip()
-                        if len(txt) >= 5:
-                            print(f"   ⚠️ 通知メッセージ: {txt}")
-                            break
-            except Exception:
-                pass
-
-        # 診断: ネットワークリクエストを表示
-        page.remove_listener("response", _on_any_response)
         if all_publish_requests:
             for req in all_publish_requests[:5]:
                 print(f"   📡 {req}")
-        else:
-            print("   📡 投稿関連のネットワークリクエストが検出されませんでした")
-
-        # APIエラーがあれば表示
         if api_errors:
             for err in api_errors:
                 print(f"   ⚠️ APIエラー: {err}")
 
         await take_screenshot(page, "09_published")
 
-        # 投稿成功確認
         current_url = page.url
         if "/publish/" in current_url or "/notes/new" in current_url or current_url.endswith("/edit"):
             print(f"   ⚠️ 公開結果が不明です。URL: {current_url}")
