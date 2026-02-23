@@ -97,6 +97,7 @@ def main():
     if args.headless:
         import config
         config.HEADLESS = True
+        config.SLOW_MO = 0  # ヘッドレスでは遅延不要
 
     # 投稿履歴の確認
     from post_history import get_used_themes, add_record, print_stats
