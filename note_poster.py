@@ -248,21 +248,36 @@ async def _insert_image(page: Page, image_path: Path) -> bool:
     await page.keyboard.press("Enter")
     await page.wait_for_timeout(800)
 
-    # ページ上の全ボタンのクラス名を出力（初回デバッグ用）
-    try:
-        btn_info = await page.evaluate("""
-            () => Array.from(document.querySelectorAll('button')).map(b => {
-                const r = b.getBoundingClientRect();
-                return {cls: b.className.substring(0, 80), txt: b.textContent.trim().substring(0, 15), x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height)};
-            }).filter(b => b.w > 0 && b.h > 0 && b.w < 200 && b.h < 200)
-        """)
-        print(f"   🔍 ボタン検出 ({len(btn_info)}個):")
-        for b in btn_info[:12]:
-            print(f"      [{b['x']},{b['y']}] w={b['w']} txt='{b['txt']}' cls='{b['cls']}'")
-    except Exception as e:
-        print(f"   ⚠️ ボタン取得失敗: {e}")
+    # Strategy 1: note.com の floating + ボタン → 画像メニュー
+    # クラス名 sc-ebe7c9bf（浮動追加ボタン）or sc-fd3d5259（インラインツールバー）
+    note_plus_selectors = [
+        'button[class*="sc-ebe7c9bf"]',  # 浮動 + ボタン（w≈48）
+        'button[class*="sc-fd3d5259"]',  # インラインツールバー + ボタン
+    ]
+    for sel in note_plus_selectors:
+        try:
+            el = page.locator(sel).first
+            if await el.count() > 0:
+                await el.scroll_into_view_if_needed()
+                await page.wait_for_timeout(500)
+                async with page.expect_file_chooser(timeout=8000) as fc_info:
+                    await el.click(force=True)
+                    await page.wait_for_timeout(600)
+                    # + メニューから「画像」を選択
+                    img_menu = page.locator('button:has-text("画像")').first
+                    if await img_menu.is_visible(timeout=3000):
+                        await img_menu.click()
+                fc = await fc_info.value
+                await fc.set_files(str(image_path))
+                await page.wait_for_timeout(4000)
+                await take_screenshot(page, f"img_{image_path.stem}")
+                print(f"   ✅ 画像挿入完了（+ボタン経由）")
+                await page.keyboard.press("Enter")
+                return True
+        except Exception:
+            pass
 
-    # Strategy 1: hidden な file input に直接セット
+    # Strategy 2: hidden な file input に直接セット
     for selector in [
         'input[type="file"][accept*="image"]',
         'input[type="file"]',
@@ -278,38 +293,6 @@ async def _insert_image(page: Page, image_path: Path) -> bool:
                 return True
             except Exception:
                 pass
-
-    # Strategy 2: エディタ左の "+" ブロック追加ボタン → 画像選択
-    plus_selectors = [
-        '[class*="addButton"]',
-        '[class*="AddButton"]',
-        '[class*="insertBlock"]',
-        '[class*="InsertBlock"]',
-        'button[aria-label*="ブロック追加"]',
-        'button[aria-label*="追加"]',
-        '[data-testid*="add-block"]',
-    ]
-    for sel in plus_selectors:
-        el = page.locator(sel).first
-        try:
-            if await el.is_visible(timeout=2000):
-                async with page.expect_file_chooser(timeout=8000) as fc_info:
-                    await el.click()
-                    await page.wait_for_timeout(500)
-                    img_btn = page.locator(
-                        'button:has-text("画像"), [aria-label*="画像"], [data-testid*="image"]'
-                    ).first
-                    if await img_btn.is_visible(timeout=2000):
-                        await img_btn.click()
-                fc = await fc_info.value
-                await fc.set_files(str(image_path))
-                await page.wait_for_timeout(4000)
-                await take_screenshot(page, f"img_{image_path.stem}")
-                print(f"   ✅ 画像挿入完了（+ボタン経由）")
-                await page.keyboard.press("Enter")
-                return True
-        except Exception:
-            pass
 
     # Strategy 3: ツールバーの画像ボタン
     toolbar_img_selectors = [
