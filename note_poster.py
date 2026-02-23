@@ -269,10 +269,28 @@ async def _insert_image(page: Page, image_path: Path) -> bool:
                         await img_menu.click()
                 fc = await fc_info.value
                 await fc.set_files(str(image_path))
+                # アップロード完了を待つ
                 await page.wait_for_timeout(4000)
+                # クロップ確認ダイアログが出た場合は「完了」ボタンで確認
+                for confirm_sel in [
+                    'button:has-text("完了")',
+                    'button:has-text("保存")',
+                    'button:has-text("OK")',
+                    'button:has-text("適用")',
+                ]:
+                    confirm_btn = page.locator(confirm_sel).first
+                    try:
+                        if await confirm_btn.is_visible(timeout=2000):
+                            await confirm_btn.click()
+                            print(f"   ✅ 画像クロップ確認完了")
+                            await page.wait_for_timeout(1500)
+                            break
+                    except Exception:
+                        pass
                 await take_screenshot(page, f"img_{image_path.stem}")
                 print(f"   ✅ 画像挿入完了（+ボタン経由）")
                 await page.keyboard.press("Enter")
+                await page.wait_for_timeout(1000)
                 return True
         except Exception:
             pass
@@ -648,7 +666,7 @@ async def _publish(page: Page, hashtags: list[str] = None) -> bool:
         await take_screenshot(page, "09_published")
 
         current_url = page.url
-        if "/publish/" in current_url or "/notes/new" in current_url or current_url.endswith("/edit"):
+        if "/publish/" in current_url or "/notes/new" in current_url or "/edit" in current_url:
             print(f"   ⚠️ 公開結果が不明です。URL: {current_url}")
             return False
         else:
