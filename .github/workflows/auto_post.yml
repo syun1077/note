@@ -41,8 +41,8 @@ jobs:
           NOTE_PASSWORD_1: ${{ secrets.NOTE_PASSWORD_1 }}
           NOTE_EMAIL_2: ${{ secrets.NOTE_EMAIL_2 }}
           NOTE_PASSWORD_2: ${{ secrets.NOTE_PASSWORD_2 }}
-          # Gemini API
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # Groq API（無料・記事生成用）
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           # 投稿設定
           POST_AS_DRAFT: ${{ secrets.POST_AS_DRAFT || 'false' }}
           # 通知（未設定ならスキップ）

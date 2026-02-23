@@ -1,16 +1,16 @@
 """
 note.com 自動投稿 - AI記事生成モジュール
 ========================================
-Gemini APIを使って記事を自動生成します。
+Groq API（無料）を使って記事を自動生成します。
 テーマの重複を自動防止します。
 """
 
 import os
 import random
 import time
-from google import genai
+from groq import Groq
 from dotenv import load_dotenv
-from config import ARTICLE_THEMES, ARTICLE_STYLE, DEFAULT_HASHTAGS, GEMINI_MODEL
+from config import ARTICLE_THEMES, ARTICLE_STYLE, DEFAULT_HASHTAGS, GROQ_MODEL
 
 load_dotenv()
 
@@ -19,28 +19,28 @@ MAX_RETRIES = 3
 RETRY_WAIT_SECONDS = 65  # レート制限は通常60秒でリセット
 
 
-def setup_gemini():
-    """Gemini APIクライアントを初期化"""
-    api_key = os.getenv("GEMINI_API_KEY")
+def setup_groq():
+    """Groq APIクライアントを初期化"""
+    api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
-        raise ValueError("GEMINI_API_KEY が .env ファイルに設定されていません")
-    client = genai.Client(api_key=api_key)
+        raise ValueError("GROQ_API_KEY が .env ファイルまたは環境変数に設定されていません")
+    client = Groq(api_key=api_key)
     return client
 
 
 def generate_article(theme: str = None, used_themes: set = None) -> dict:
     """
     AIを使って記事を生成する
-    
+
     Args:
         theme: 記事のテーマ（指定しない場合はランダム選択）
         used_themes: 使用済みテーマのセット（重複防止）
-    
+
     Returns:
         dict: {"title": str, "body": str, "hashtags": list[str], "theme": str}
     """
-    client = setup_gemini()
-    
+    client = setup_groq()
+
     if theme is None:
         # 使用済みテーマを除外してランダム選択
         if used_themes:
@@ -52,14 +52,13 @@ def generate_article(theme: str = None, used_themes: set = None) -> dict:
                 print(f"   📋 未使用テーマ: {len(available_themes)}/{len(ARTICLE_THEMES)} 件")
         else:
             available_themes = ARTICLE_THEMES
-        
+
         theme = random.choice(available_themes)
-    
+
     print(f"📝 テーマ: {theme}")
     print(f"🤖 AIが記事を生成中...")
-    
-    prompt = f"""
-あなたはnote.comで人気のブロガーです。
+
+    prompt = f"""あなたはnote.comで人気のブロガーです。
 以下のテーマについて、note.comに投稿する記事を書いてください。
 
 ## テーマ
@@ -81,18 +80,19 @@ def generate_article(theme: str = None, used_themes: set = None) -> dict:
 
 ---HASHTAGS_START---
 （ここにカンマ区切りでハッシュタグを5個書く。#は不要）
----HASHTAGS_END---
-"""
-    
+---HASHTAGS_END---"""
+
     # リトライ付きでAPI呼び出し
     text = None
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            response = client.models.generate_content(
-                model=GEMINI_MODEL,
-                contents=prompt,
+            response = client.chat.completions.create(
+                model=GROQ_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=4096,
+                temperature=0.8,
             )
-            text = response.text
+            text = response.choices[0].message.content
             break
         except Exception as e:
             error_msg = str(e)
@@ -104,27 +104,27 @@ def generate_article(theme: str = None, used_themes: set = None) -> dict:
                     raise Exception(f"レート制限により{MAX_RETRIES}回リトライしましたが失敗しました: {e}")
             else:
                 raise
-    
+
     if text is None:
         raise Exception("記事生成に失敗しました")
-    
+
     # パース
     title = _extract_between(text, "---TITLE_START---", "---TITLE_END---").strip()
     body = _extract_between(text, "---BODY_START---", "---BODY_END---").strip()
     hashtags_raw = _extract_between(text, "---HASHTAGS_START---", "---HASHTAGS_END---").strip()
-    
+
     hashtags = [tag.strip() for tag in hashtags_raw.split(",") if tag.strip()]
     if not hashtags:
         hashtags = DEFAULT_HASHTAGS[:5]
-    
+
     if not title or not body:
         raise ValueError("記事の生成に失敗しました。出力フォーマットが正しくありません。")
-    
+
     print(f"✅ 記事生成完了!")
     print(f"   タイトル: {title}")
     print(f"   本文文字数: {len(body)}文字")
     print(f"   ハッシュタグ: {', '.join(hashtags)}")
-    
+
     return {
         "title": title,
         "body": body,
