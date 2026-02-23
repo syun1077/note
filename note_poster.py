@@ -422,7 +422,12 @@ async def _publish(page: Page, hashtags: list[str] = None) -> bool:
                 await page.wait_for_url("**/publish/**", timeout=8000)
             except Exception:
                 pass
-            await page.wait_for_timeout(2000)
+            # ページが完全に読み込まれるまで待つ
+            try:
+                await page.wait_for_load_state("networkidle", timeout=8000)
+            except Exception:
+                pass
+            await page.wait_for_timeout(1000)
             await take_screenshot(page, "08_publish_dialog")
 
         # 公開設定ページでハッシュタグを入力（keyboard.typeでReact状態を正しく更新）
@@ -435,11 +440,14 @@ async def _publish(page: Page, hashtags: list[str] = None) -> bool:
                 tag_input = tag_input_dialog.first
                 for tag in hashtags[:5]:
                     await tag_input.click()
-                    await tag_input.fill("")  # 既存テキストをクリア
-                    await page.keyboard.type(tag, delay=30)  # 1文字ずつ入力（React状態更新のため）
+                    await tag_input.fill("")
+                    await page.keyboard.type(tag, delay=30)
                     await page.wait_for_timeout(500)
                     await page.keyboard.press("Enter")
                     await page.wait_for_timeout(500)
+                # タグ入力欄からフォーカスを外す
+                await page.keyboard.press("Escape")
+                await page.wait_for_timeout(1000)
                 print("   ✅ タグ入力完了")
             else:
                 print("   ⚠️ タグ入力欄が見つかりませんでした（スキップ）")
@@ -454,7 +462,15 @@ async def _publish(page: Page, hashtags: list[str] = None) -> bool:
         # クリック前スクリーンショット（デバッグ用）
         await take_screenshot(page, "08c_before_final_click")
 
-        # 最終「投稿する」ボタンをクリック
+        # 全ネットワーク活動を記録（診断用）
+        all_publish_requests: list[str] = []
+        async def _on_any_response(response):
+            if "note.com" in response.url and response.status in (200, 201):
+                if any(k in response.url for k in ("publish", "note", "create")):
+                    all_publish_requests.append(f"HTTP {response.status}: {response.url}")
+        page.on("response", _on_any_response)
+
+        # 最終「投稿する」ボタン: dispatch_event で確実にクリック
         final_publish_selectors = [
             'button:has-text("投稿する")',
             'button:has-text("公開する")',
@@ -464,28 +480,21 @@ async def _publish(page: Page, hashtags: list[str] = None) -> bool:
 
         final_button = await _find_element(page, final_publish_selectors, "最終公開ボタン")
         if final_button:
-            # 通常クリック
+            # 1. 通常クリック
             await _safe_click(page, final_button, "最終公開ボタン")
-            await page.wait_for_timeout(1000)
-
-            # JSクリックも実行（SPA内部ハンドラを確実に呼ぶ）
-            print("   → JSクリックも実行...")
-            await page.evaluate("""
-                () => {
-                    const buttons = Array.from(document.querySelectorAll('button'));
-                    const btn = buttons.find(b =>
-                        b.textContent.trim() === '投稿する' ||
-                        b.textContent.trim() === '公開する'
-                    );
-                    if (btn) btn.click();
-                }
-            """)
+            await page.wait_for_timeout(500)
+            # 2. dispatchEvent（ポインターイベントをバイパス）
+            print("   → dispatchEvent クリックも実行...")
+            try:
+                await final_button.dispatch_event("click")
+            except Exception:
+                pass
         else:
             print("   ⚠️ 最終公開ボタンが見つかりませんでした")
 
         # ネットワーク処理の完了を待つ
         try:
-            await page.wait_for_load_state("networkidle", timeout=10000)
+            await page.wait_for_load_state("networkidle", timeout=15000)
         except Exception:
             pass
 
@@ -499,17 +508,25 @@ async def _publish(page: Page, hashtags: list[str] = None) -> bool:
         except Exception:
             print("   ⚠️ 20秒以内にページ遷移が確認できませんでした")
 
-            # エラーメッセージを探す
+            # Toast/alert 系エラーのみ検出（テキストが5文字以上のもの）
             try:
-                error_el = page.locator(
-                    '[class*="Toast"], [class*="toast"], [role="alert"], '
-                    '[class*="error"]:not(input), [class*="Error"]:not(input)'
-                )
-                if await error_el.count() > 0:
-                    error_text = await error_el.first.text_content()
-                    print(f"   ⚠️ 画面エラーメッセージ: {error_text}")
+                for sel in ['[role="alert"]', '[class*="Toast"]', '[class*="toast"]']:
+                    el = page.locator(sel)
+                    if await el.count() > 0:
+                        txt = (await el.first.text_content() or "").strip()
+                        if len(txt) >= 5:
+                            print(f"   ⚠️ 通知メッセージ: {txt}")
+                            break
             except Exception:
                 pass
+
+        # 診断: ネットワークリクエストを表示
+        page.remove_listener("response", _on_any_response)
+        if all_publish_requests:
+            for req in all_publish_requests[:5]:
+                print(f"   📡 {req}")
+        else:
+            print("   📡 投稿関連のネットワークリクエストが検出されませんでした")
 
         # APIエラーがあれば表示
         if api_errors:

@@ -10,6 +10,8 @@ jobs:
   auto-post:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: write  # 投稿履歴のgit pushに必要
 
     steps:
       - name: リポジトリをチェックアウト
