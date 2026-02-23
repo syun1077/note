@@ -422,6 +422,9 @@ async def _publish(page: Page) -> bool:
     if ENABLE_PAID_ARTICLE:
         await _set_paid_article(page)
     
+    # 本人確認モーダルなどブロッキングモーダルを閉じてから最終クリック
+    await _close_identification_modal(page)
+
     # 最終的な「公開」ボタンをクリック
     final_publish_selectors = [
         'button:has-text("投稿する")',
@@ -430,28 +433,42 @@ async def _publish(page: Page) -> bool:
         'button[class*="submit"]',
         'button[class*="Submit"]',
     ]
-    
+
     final_button = await _find_element(page, final_publish_selectors, "最終公開ボタン")
     if final_button:
         await _safe_click(page, final_button, "最終公開ボタン")
-    
+
     await page.wait_for_timeout(5000)
     await take_screenshot(page, "09_published")
-    
-    # 投稿成功確認
+
+    # 投稿成功確認（/publish/ や /new が残っていれば未完了）
     current_url = page.url
-    if "notes/new" not in current_url and "edit" not in current_url:
-        print(f"   ✅ 記事公開成功! URL: {current_url}")
-        return True
-    else:
+    if "/publish/" in current_url or "/notes/new" in current_url or current_url.endswith("/edit"):
         print(f"   ⚠️ 公開結果が不明です。URL: {current_url}")
         return False
+    else:
+        print(f"   ✅ 記事公開成功! URL: {current_url}")
+        return True
+
+
+async def _close_identification_modal(page: Page) -> bool:
+    """本人確認モーダルが出ていれば Escape で閉じる"""
+    try:
+        modal = page.locator('[class*="IdentificationModal"]')
+        if await modal.count() > 0:
+            print("   ⚠️ 本人確認モーダルを検出。閉じます...")
+            await page.keyboard.press("Escape")
+            await page.wait_for_timeout(1500)
+            return True
+    except Exception:
+        pass
+    return False
 
 
 async def _set_paid_article(page: Page):
     """有料記事の価格を設定する"""
     print(f"   💰 有料記事設定中（価格: ¥{ARTICLE_PRICE}）...")
-    
+
     # 有料設定のトグル/チェックボックスを探す
     paid_selectors = [
         'label:has-text("有料")',
@@ -460,12 +477,18 @@ async def _set_paid_article(page: Page):
         '[class*="price"] input',
         'input[name*="price"]',
     ]
-    
+
     paid_toggle = await _find_element(page, paid_selectors, "有料設定")
     if paid_toggle:
         await _safe_click(page, paid_toggle, "有料設定トグル")
-        await page.wait_for_timeout(1000)
-        
+        await page.wait_for_timeout(1500)
+
+        # 本人確認モーダルが出た場合は閉じてスキップ
+        if await _close_identification_modal(page):
+            print("   ⚠️ 本人確認が必要なため有料設定をスキップします（無料記事として投稿）")
+            await take_screenshot(page, "08b_paid_settings")
+            return
+
         # 価格入力欄を探す
         price_selectors = [
             'input[type="number"]',
@@ -473,7 +496,7 @@ async def _set_paid_article(page: Page):
             'input[placeholder*="円"]',
             'input[name*="price"]',
         ]
-        
+
         price_input = await _find_element(page, price_selectors, "価格入力欄")
         if price_input:
             await price_input.fill(str(ARTICLE_PRICE))
@@ -482,7 +505,7 @@ async def _set_paid_article(page: Page):
             print("   ⚠️ 価格入力欄が見つかりませんでした")
     else:
         print("   ⚠️ 有料設定が見つかりませんでした（UIを確認してください）")
-    
+
     await take_screenshot(page, "08b_paid_settings")
 
 
