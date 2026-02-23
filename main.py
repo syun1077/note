@@ -77,8 +77,8 @@ def main():
     print("=" * 60)
 
     # 環境変数チェック
-    if not os.getenv("GEMINI_API_KEY"):
-        print("\n❌ エラー: GEMINI_API_KEY が設定されていません")
+    if not os.getenv("GROQ_API_KEY"):
+        print("\n❌ エラー: GROQ_API_KEY が設定されていません")
         print("   .env ファイルを作成して設定してください")
         sys.exit(1)
 
