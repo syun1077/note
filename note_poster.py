@@ -248,6 +248,20 @@ async def _insert_image(page: Page, image_path: Path) -> bool:
     await page.keyboard.press("Enter")
     await page.wait_for_timeout(800)
 
+    # ページ上の全ボタンのクラス名を出力（初回デバッグ用）
+    try:
+        btn_info = await page.evaluate("""
+            () => Array.from(document.querySelectorAll('button')).map(b => {
+                const r = b.getBoundingClientRect();
+                return {cls: b.className.substring(0, 80), txt: b.textContent.trim().substring(0, 15), x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height)};
+            }).filter(b => b.w > 0 && b.h > 0 && b.w < 200 && b.h < 200)
+        """)
+        print(f"   🔍 ボタン検出 ({len(btn_info)}個):")
+        for b in btn_info[:12]:
+            print(f"      [{b['x']},{b['y']}] w={b['w']} txt='{b['txt']}' cls='{b['cls']}'")
+    except Exception as e:
+        print(f"   ⚠️ ボタン取得失敗: {e}")
+
     # Strategy 1: hidden な file input に直接セット
     for selector in [
         'input[type="file"][accept*="image"]',
