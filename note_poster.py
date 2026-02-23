@@ -411,16 +411,20 @@ async def post_article(page: Page, title: str, body: str, hashtags: list[str], a
     from image_fetcher import fetch_images_for_article, IMAGE_MARKER_PATTERN
     article_images = fetch_images_for_article(body)
 
+    # デバッグ: article_images のキー確認
+    print(f"   🔍 画像キー: {list(article_images.keys())}")
+
     async def _type_paragraphs(text: str):
         """段落を入力し、[IMAGE:keyword] マーカーで画像を挿入する"""
         paragraphs = text.split("\n")
         for i, paragraph in enumerate(paragraphs):
             stripped = paragraph.strip()
-            # 画像マーカー行
-            img_match = IMAGE_MARKER_PATTERN.match(stripped)
+            # 画像マーカーを search() で行内のどこでも検出
+            img_match = IMAGE_MARKER_PATTERN.search(stripped)
             if img_match:
                 keyword = img_match.group(1).strip()
                 img_path = article_images.get(keyword)
+                print(f"   🔍 マーカー検出: '{keyword}' → {img_path}")
                 if img_path:
                     await _insert_image(page, img_path)
                 continue  # マーカー行は Enter しない
