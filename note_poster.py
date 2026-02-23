@@ -359,7 +359,7 @@ async def post_article(page: Page, title: str, body: str, hashtags: list[str], a
     if as_draft:
         success = await _save_as_draft(page)
     else:
-        success = await _publish(page)
+        success = await _publish(page, hashtags=hashtags)
     
     return success
 
@@ -392,10 +392,10 @@ async def _add_hashtags(page: Page, hashtags: list[str]):
     await take_screenshot(page, "07_hashtags_added")
 
 
-async def _publish(page: Page) -> bool:
+async def _publish(page: Page, hashtags: list[str] = None) -> bool:
     """記事を公開する"""
     print("   🚀 記事を公開中...")
-    
+
     # 「公開設定」ボタンを探す
     publish_button_selectors = [
         'button:has-text("公開設定")',
@@ -406,47 +406,73 @@ async def _publish(page: Page) -> bool:
         '[class*="publish"] button',
         '[class*="Publish"] button',
     ]
-    
+
     publish_button = await _find_element(page, publish_button_selectors, "公開設定ボタン")
     if publish_button:
         await _safe_click(page, publish_button, "公開設定ボタン")
-        await page.wait_for_timeout(3000)
+        # ダイアログが完全に開くまで待つ
+        await page.wait_for_timeout(4000)
         await take_screenshot(page, "08_publish_dialog")
-    
-    # 公開設定ダイアログが出た場合、ハッシュタグの入力を試みる
-    tag_input_dialog = page.locator('input[placeholder*="タグ"], input[placeholder*="ハッシュタグ"]')
-    if await tag_input_dialog.count() > 0:
-        print("   📝 公開設定ダイアログでタグ入力欄を検出")
-    
+
+    # 公開設定ダイアログでハッシュタグを入力
+    if hashtags:
+        tag_input_dialog = page.locator(
+            'input[placeholder*="タグ"], input[placeholder*="ハッシュタグ"], input[placeholder*="tag"]'
+        )
+        if await tag_input_dialog.count() > 0:
+            print("   🏷️ 公開設定ダイアログでタグを入力中...")
+            tag_input = tag_input_dialog.first
+            for tag in hashtags[:5]:
+                await tag_input.click()
+                await tag_input.fill(tag)
+                await page.wait_for_timeout(400)
+                await page.keyboard.press("Enter")
+                await page.wait_for_timeout(400)
+            print("   ✅ タグ入力完了")
+
     # 有料記事の価格設定（有効な場合）
     if ENABLE_PAID_ARTICLE:
         await _set_paid_article(page)
-    
+
     # 本人確認モーダルなどブロッキングモーダルを閉じてから最終クリック
     await _close_identification_modal(page)
 
-    # 最終的な「公開」ボタンをクリック
+    # 最終的な「投稿する」ボタンをクリック
     final_publish_selectors = [
         'button:has-text("投稿する")',
         'button:has-text("公開する")',
-        'button:has-text("公開")',
         'button[class*="submit"]',
         'button[class*="Submit"]',
     ]
 
     final_button = await _find_element(page, final_publish_selectors, "最終公開ボタン")
     if final_button:
-        await _safe_click(page, final_button, "最終公開ボタン")
+        clicked = await _safe_click(page, final_button, "最終公開ボタン")
+        # 通常クリックが失敗した場合はJSで直接クリック
+        if not clicked:
+            print("   → JSフォールバッククリックを試みます...")
+            await page.evaluate("""
+                () => {
+                    const buttons = Array.from(document.querySelectorAll('button'));
+                    const btn = buttons.find(b =>
+                        b.textContent.trim() === '投稿する' ||
+                        b.textContent.trim() === '公開する'
+                    );
+                    if (btn) btn.click();
+                }
+            """)
+    else:
+        print("   ⚠️ 最終公開ボタンが見つかりませんでした")
 
-    # URL が /publish/ から遷移するまで最大15秒待つ
+    # URL が /publish/ から遷移するまで最大20秒待つ
     try:
         await page.wait_for_url(
             lambda url: "/publish/" not in url and "/notes/new" not in url,
-            timeout=15000,
+            timeout=20000,
         )
         print("   ✅ ページ遷移を確認")
     except Exception:
-        print("   ⚠️ 15秒以内にページ遷移が確認できませんでした")
+        print("   ⚠️ 20秒以内にページ遷移が確認できませんでした")
 
     await take_screenshot(page, "09_published")
 
