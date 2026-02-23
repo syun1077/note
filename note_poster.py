@@ -414,11 +414,6 @@ async def post_article(page: Page, title: str, body: str, hashtags: list[str], a
     from image_fetcher import fetch_images_for_article, IMAGE_MARKER_PATTERN
     article_images = fetch_images_for_article(body)
 
-    # 有料記事のマーカーを処理
-    body_parts = body.split("---ここから有料---")
-    free_body = body_parts[0] if len(body_parts) > 1 else body
-    paid_body = body_parts[1] if len(body_parts) > 1 else None
-
     async def _type_paragraphs(text: str):
         """段落を入力し、[IMAGE:keyword] マーカーで画像を挿入する"""
         paragraphs = text.split("\n")
@@ -438,15 +433,22 @@ async def post_article(page: Page, title: str, body: str, hashtags: list[str], a
             if i > 0 and i % 50 == 0:
                 print(f"   📝 本文入力中... {i}/{len(paragraphs)} 行")
 
-    # 無料パートを入力
-    await _type_paragraphs(free_body)
-
-    # 有料パートがある場合
-    if paid_body and ENABLE_PAID_ARTICLE:
+    # 有料記事モードの場合: 無料パート → 有料パートに分けて入力
+    # 無料記事モードの場合: 全体を入力（---ここから有料---マーカーは除去）
+    if ENABLE_PAID_ARTICLE and "---ここから有料---" in body:
+        body_parts = body.split("---ここから有料---")
+        free_body = body_parts[0]
+        paid_body = body_parts[1]
+        await _type_paragraphs(free_body)
         print("   💰 有料パート入力中...")
         await _type_paragraphs(paid_body)
-    
-    total_lines = len(free_body.split("\n")) + (len(paid_body.split("\n")) if paid_body else 0)
+        total_lines = len(free_body.split("\n")) + len(paid_body.split("\n"))
+    else:
+        # 有料マーカーを取り除いて全文を投稿
+        full_body = body.replace("---ここから有料---", "")
+        await _type_paragraphs(full_body)
+        total_lines = len(full_body.split("\n"))
+
     print(f"   ✅ 本文入力完了 ({total_lines} 行)")
     await page.wait_for_timeout(2000)
     await take_screenshot(page, "06_body_filled")
