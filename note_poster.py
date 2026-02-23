@@ -438,7 +438,16 @@ async def _publish(page: Page) -> bool:
     if final_button:
         await _safe_click(page, final_button, "最終公開ボタン")
 
-    await page.wait_for_timeout(5000)
+    # URL が /publish/ から遷移するまで最大15秒待つ
+    try:
+        await page.wait_for_url(
+            lambda url: "/publish/" not in url and "/notes/new" not in url,
+            timeout=15000,
+        )
+        print("   ✅ ページ遷移を確認")
+    except Exception:
+        print("   ⚠️ 15秒以内にページ遷移が確認できませんでした")
+
     await take_screenshot(page, "09_published")
 
     # 投稿成功確認（/publish/ や /new が残っていれば未完了）
