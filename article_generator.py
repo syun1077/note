@@ -10,7 +10,7 @@ import random
 import time
 from google import genai
 from dotenv import load_dotenv
-from config import ARTICLE_THEMES, ARTICLE_STYLE, DEFAULT_HASHTAGS
+from config import ARTICLE_THEMES, ARTICLE_STYLE, DEFAULT_HASHTAGS, GEMINI_MODEL
 
 load_dotenv()
 
@@ -89,7 +89,7 @@ def generate_article(theme: str = None, used_themes: set = None) -> dict:
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             response = client.models.generate_content(
-                model="gemini-2.0-flash",
+                model=GEMINI_MODEL,
                 contents=prompt,
             )
             text = response.text
