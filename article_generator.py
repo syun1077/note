@@ -6,6 +6,7 @@ Groq API（無料）を使って記事を自動生成します。
 """
 
 import os
+import json
 import random
 import time
 from groq import Groq
@@ -24,8 +25,7 @@ def setup_groq():
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
         raise ValueError("GROQ_API_KEY が .env ファイルまたは環境変数に設定されていません")
-    client = Groq(api_key=api_key)
-    return client
+    return Groq(api_key=api_key)
 
 
 def generate_article(theme: str = None, used_themes: set = None) -> dict:
@@ -42,7 +42,6 @@ def generate_article(theme: str = None, used_themes: set = None) -> dict:
     client = setup_groq()
 
     if theme is None:
-        # 使用済みテーマを除外してランダム選択
         if used_themes:
             available_themes = [t for t in ARTICLE_THEMES if t not in used_themes]
             if not available_themes:
@@ -58,67 +57,83 @@ def generate_article(theme: str = None, used_themes: set = None) -> dict:
     print(f"📝 テーマ: {theme}")
     print(f"🤖 AIが記事を生成中...")
 
-    prompt = f"""あなたはnote.comで人気のブロガーです。
-以下のテーマについて、note.comに投稿する記事を書いてください。
+    system_prompt = (
+        "あなたはnote.comで人気のブロガーです。"
+        "ユーザーの指示に従い、必ず有効なJSONのみを返してください。"
+        "JSONのキーは title, body, hashtags の3つです。"
+        "余分なテキスト、コードブロック記号、説明文は一切含めないでください。"
+    )
 
-## テーマ
-{theme}
+    user_prompt = f"""以下のテーマでnote.com記事を書き、JSON形式で返してください。
 
-## 記事のスタイル・要件
+テーマ: {theme}
+
+スタイル要件:
 {ARTICLE_STYLE}
 
-## 出力フォーマット
-以下の形式で出力してください（マーカーは必ず含めてください）：
-
----TITLE_START---
-（ここに記事タイトルを1行で書く。キャッチーで読みたくなるタイトルにしてください）
----TITLE_END---
-
----BODY_START---
-（ここに記事本文を書く。Markdown形式で。）
----BODY_END---
-
----HASHTAGS_START---
-（ここにカンマ区切りでハッシュタグを5個書く。#は不要）
----HASHTAGS_END---"""
+出力形式（このJSONのみを返す）:
+{{
+  "title": "記事タイトル（キャッチーで30〜50文字）",
+  "body": "記事本文（Markdown形式、3000文字以上）",
+  "hashtags": ["タグ1", "タグ2", "タグ3", "タグ4", "タグ5"]
+}}"""
 
     # リトライ付きでAPI呼び出し
-    text = None
+    last_error = None
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             response = client.chat.completions.create(
                 model=GROQ_MODEL,
-                messages=[{"role": "user", "content": prompt}],
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
                 max_tokens=4096,
-                temperature=0.8,
+                temperature=0.7,
+                response_format={"type": "json_object"},
             )
-            text = response.choices[0].message.content
+            raw = response.choices[0].message.content.strip()
             break
         except Exception as e:
+            last_error = e
             error_msg = str(e)
             if "429" in error_msg or "quota" in error_msg.lower() or "rate" in error_msg.lower():
                 if attempt < MAX_RETRIES:
-                    print(f"   ⏳ レート制限に達しました。{RETRY_WAIT_SECONDS}秒待ってリトライします... ({attempt}/{MAX_RETRIES})")
+                    print(f"   ⏳ レート制限。{RETRY_WAIT_SECONDS}秒待ってリトライ... ({attempt}/{MAX_RETRIES})")
                     time.sleep(RETRY_WAIT_SECONDS)
                 else:
-                    raise Exception(f"レート制限により{MAX_RETRIES}回リトライしましたが失敗しました: {e}")
+                    raise Exception(f"レート制限により{MAX_RETRIES}回リトライしましたが失敗: {e}")
+            elif "json_object" in error_msg.lower() or "response_format" in error_msg.lower():
+                # response_format 非対応モデルの場合はフォールバック
+                print(f"   ⚠️ JSON mode 非対応。テキストモードで再試行...")
+                return _generate_article_text_mode(client, theme, user_prompt)
             else:
                 raise
+    else:
+        raise Exception(f"記事生成に失敗しました: {last_error}")
 
-    if text is None:
-        raise Exception("記事生成に失敗しました")
+    # JSONパース
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        # JSON部分を抽出して再試行
+        print(f"   ⚠️ JSONパース失敗。テキストから抽出を試みます...")
+        data = _extract_json_from_text(raw)
 
-    # パース
-    title = _extract_between(text, "---TITLE_START---", "---TITLE_END---").strip()
-    body = _extract_between(text, "---BODY_START---", "---BODY_END---").strip()
-    hashtags_raw = _extract_between(text, "---HASHTAGS_START---", "---HASHTAGS_END---").strip()
+    title = (data.get("title") or "").strip()
+    body = (data.get("body") or "").strip()
+    hashtags = data.get("hashtags") or []
 
-    hashtags = [tag.strip() for tag in hashtags_raw.split(",") if tag.strip()]
+    if isinstance(hashtags, str):
+        hashtags = [h.strip() for h in hashtags.split(",") if h.strip()]
+    hashtags = [str(h).strip().lstrip("#") for h in hashtags if h][:5]
+
     if not hashtags:
         hashtags = DEFAULT_HASHTAGS[:5]
 
     if not title or not body:
-        raise ValueError("記事の生成に失敗しました。出力フォーマットが正しくありません。")
+        print(f"   ⚠️ レスポンス内容（先頭200文字）: {raw[:200]}")
+        raise ValueError(f"記事の生成に失敗しました。title={bool(title)}, body={bool(body)}")
 
     print(f"✅ 記事生成完了!")
     print(f"   タイトル: {title}")
@@ -133,18 +148,70 @@ def generate_article(theme: str = None, used_themes: set = None) -> dict:
     }
 
 
+def _generate_article_text_mode(client: Groq, theme: str, user_prompt: str) -> dict:
+    """response_format非対応の場合のフォールバック（マーカー方式）"""
+    fallback_prompt = f"""テーマ「{theme}」でnote.com記事を書いてください。
+必ず以下のマーカーを使って出力してください：
+
+---TITLE_START---
+タイトルをここに
+---TITLE_END---
+
+---BODY_START---
+本文をここに（3000文字以上）
+---BODY_END---
+
+---HASHTAGS_START---
+タグ1, タグ2, タグ3, タグ4, タグ5
+---HASHTAGS_END---"""
+
+    response = client.chat.completions.create(
+        model=GROQ_MODEL,
+        messages=[{"role": "user", "content": fallback_prompt}],
+        max_tokens=4096,
+        temperature=0.7,
+    )
+    text = response.choices[0].message.content
+
+    title = _extract_between(text, "---TITLE_START---", "---TITLE_END---").strip()
+    body = _extract_between(text, "---BODY_START---", "---BODY_END---").strip()
+    hashtags_raw = _extract_between(text, "---HASHTAGS_START---", "---HASHTAGS_END---").strip()
+    hashtags = [h.strip().lstrip("#") for h in hashtags_raw.split(",") if h.strip()][:5]
+
+    if not hashtags:
+        hashtags = DEFAULT_HASHTAGS[:5]
+    if not title or not body:
+        print(f"   ⚠️ フォールバックレスポンス（先頭200文字）: {text[:200]}")
+        raise ValueError("フォールバックでも記事生成に失敗しました")
+
+    return {"title": title, "body": body, "hashtags": hashtags, "theme": theme}
+
+
+def _extract_json_from_text(text: str) -> dict:
+    """テキストからJSON部分を抽出してパースする"""
+    # ```json ... ``` ブロックを探す
+    import re
+    match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+    if match:
+        return json.loads(match.group(1))
+    # { ... } を直接探す
+    match = re.search(r"\{.*\}", text, re.DOTALL)
+    if match:
+        return json.loads(match.group(0))
+    raise ValueError("レスポンスからJSONが抽出できませんでした")
+
+
 def _extract_between(text: str, start_marker: str, end_marker: str) -> str:
     """テキストからマーカー間の文字列を抽出"""
     try:
         start_idx = text.index(start_marker) + len(start_marker)
-        end_idx = text.index(end_marker)
+        end_idx = text.index(end_marker, start_idx)
         return text[start_idx:end_idx]
     except ValueError:
         return ""
 
 
 if __name__ == "__main__":
-    # テスト実行
     article = generate_article()
     print("\n" + "=" * 60)
     print(f"タイトル: {article['title']}")
