@@ -71,6 +71,12 @@ async def _safe_click(page: Page, locator, description: str = "ボタン"):
             print(f"   ✅ {description}をクリック")
             return True
         except Exception as e:
+            error_msg = str(e)
+            if "intercepts pointer events" in error_msg:
+                print(f"   ⚠️ モーダルがポインタをブロック → クロップ解除を試みます")
+                await _dismiss_crop_dialog(page)
+                await page.keyboard.press("Escape")
+                await page.wait_for_timeout(1500)
             if attempt < 2:
                 print(f"   ⚠️ {description}クリックリトライ... ({attempt + 1}/3)")
                 await page.wait_for_timeout(2000)
@@ -237,12 +243,78 @@ async def _upload_thumbnail(page: Page, image_path: Path) -> bool:
     return False
 
 
+async def _dismiss_crop_dialog(page: Page) -> bool:
+    """
+    CropModal を全フレームで探して閉じる。
+    note.com は ReactModalPortal を iframe 内に表示する可能性があるため
+    page.frames で全フレームを検索する（メインフレームのみでは見つからない場合がある）。
+    """
+    all_frames = page.frames
+
+    # デバッグ: フレーム数をログ
+    if len(all_frames) > 1:
+        urls = ", ".join(f.url[:40] for f in all_frames if f.url)
+        print(f"   🔍 フレーム数: {len(all_frames)} ({urls})")
+
+    for frame in all_frames:
+        # --- Strategy A: JS（そのフレームのコンテキストで実行） ---
+        try:
+            clicked = await frame.evaluate("""
+                () => {
+                    const modal = document.querySelector('.CropModal__overlay')
+                                 || document.querySelector('.ReactModal__Overlay--after-open');
+                    if (!modal) return null;
+                    const btns = Array.from(modal.querySelectorAll('button'));
+                    const target = btns.find(b => /完了|保存|OK|適用|確定/.test(b.textContent || ''))
+                                 || (btns.length ? btns[btns.length - 1] : null);
+                    if (target) { target.click(); return target.textContent.trim(); }
+                    return null;
+                }
+            """)
+            if clicked:
+                label = (frame.url or "main")[:40]
+                print(f"   ✅ クロップ確認（frame: {label}, JS: {clicked}）")
+                await page.wait_for_timeout(2000)
+                return True
+        except Exception:
+            pass
+
+        # --- Strategy B: Playwright locator（そのフレームにスコープ） ---
+        for modal_sel in ['.CropModal__overlay', '.ReactModal__Overlay--after-open']:
+            try:
+                modal = frame.locator(modal_sel)
+                if await modal.count() > 0:
+                    label = (frame.url or "main")[:40]
+                    print(f"   🔧 モーダル検出（frame: {label}, {modal_sel}）")
+                    for text in ["保存", "完了", "OK", "適用", "確定"]:
+                        btn = modal.locator(f'button:has-text("{text}")').first
+                        if await btn.count() > 0:
+                            await btn.click(force=True)
+                            print(f"   ✅ クロップ確認（locator: {text}）")
+                            await page.wait_for_timeout(2000)
+                            return True
+                    all_btns = modal.locator('button')
+                    n = await all_btns.count()
+                    if n > 0:
+                        await all_btns.nth(n - 1).click(force=True)
+                        print(f"   ✅ クロップ確認（last button）")
+                        await page.wait_for_timeout(2000)
+                        return True
+            except Exception:
+                pass
+
+    return False
+
+
 async def _insert_image(page: Page, image_path: Path) -> bool:
     """
     エディタのカーソル位置に画像をインライン挿入する。
     複数の方法を試みて、成功したら True を返す。
     """
     print(f"   🖼️  画像挿入中: {image_path.name}")
+
+    # 前の画像のクロップダイアログが残っていれば先に閉じる
+    await _dismiss_crop_dialog(page)
 
     # カーソルを新しい行へ移動
     await page.keyboard.press("Enter")
@@ -269,24 +341,21 @@ async def _insert_image(page: Page, image_path: Path) -> bool:
                         await img_menu.click()
                 fc = await fc_info.value
                 await fc.set_files(str(image_path))
-                # アップロード完了を待つ
-                await page.wait_for_timeout(4000)
-                # クロップ確認ダイアログが出た場合は「完了」ボタンで確認
-                for confirm_sel in [
-                    'button:has-text("完了")',
-                    'button:has-text("保存")',
-                    'button:has-text("OK")',
-                    'button:has-text("適用")',
-                ]:
-                    confirm_btn = page.locator(confirm_sel).first
-                    try:
-                        if await confirm_btn.is_visible(timeout=2000):
-                            await confirm_btn.click()
-                            print(f"   ✅ 画像クロップ確認完了")
-                            await page.wait_for_timeout(1500)
-                            break
-                    except Exception:
-                        pass
+                # ファイル設定直後のスクリーンショット（タイミング確認用）
+                await page.wait_for_timeout(1500)
+                await take_screenshot(page, f"crop_check_{image_path.stem}")
+                # クロップダイアログをポーリングで検出（2秒ごと、最大16秒）
+                dismissed = False
+                for _attempt in range(8):
+                    if await _dismiss_crop_dialog(page):
+                        dismissed = True
+                        print(f"   ✅ クロップを{(_attempt+1)*2}秒後に閉じました")
+                        break
+                    if _attempt < 7:
+                        print(f"   ⌛ クロップ待機... {(_attempt+1)*2}s/16s")
+                        await page.wait_for_timeout(2000)
+                if not dismissed:
+                    print("   ℹ️ クロップダイアログなし（続行）")
                 await take_screenshot(page, f"img_{image_path.stem}")
                 print(f"   ✅ 画像挿入完了（+ボタン経由）")
                 await page.keyboard.press("Enter")
@@ -469,6 +538,8 @@ async def post_article(page: Page, title: str, body: str, hashtags: list[str], a
         total_lines = len(full_body.split("\n"))
 
     print(f"   ✅ 本文入力完了 ({total_lines} 行)")
+    # 残っているクロップダイアログを全て閉じる
+    await _dismiss_crop_dialog(page)
     await page.wait_for_timeout(2000)
     await take_screenshot(page, "06_body_filled")
     
@@ -540,9 +611,15 @@ async def _publish(page: Page, hashtags: list[str] = None) -> bool:
     page.on("response", _on_response)
 
     try:
-        # 「公開」ボタンをクリック（/publish/ ページへ遷移 or 直接公開）
+        # 公開前にクロップダイアログが残っていれば閉じる
+        await _dismiss_crop_dialog(page)
+        await page.wait_for_timeout(500)
+
+        # 「公開」ボタンをクリック（/publish/ ページへ遷移 or モーダル表示）
+        # note.com UI バリエーション: 「公開設定」「公開に進む」「公開」
         publish_button_selectors = [
             'button:has-text("公開設定")',
+            'button:has-text("公開に進む")',
             'button:has-text("公開")',
             '[class*="publish"] button',
             '[class*="Publish"] button',
@@ -551,15 +628,17 @@ async def _publish(page: Page, hashtags: list[str] = None) -> bool:
         publish_button = await _find_element(page, publish_button_selectors, "公開設定ボタン")
         if publish_button:
             await _safe_click(page, publish_button, "公開設定ボタン")
+            # URL 遷移 or モーダル表示を待つ
             try:
-                await page.wait_for_url("**/publish/**", timeout=8000)
+                await page.wait_for_url("**/publish/**", timeout=5000)
             except Exception:
                 pass
+            # モーダルが開いた場合も考慮して待機
+            await page.wait_for_timeout(2000)
             try:
-                await page.wait_for_load_state("networkidle", timeout=8000)
+                await page.wait_for_load_state("networkidle", timeout=5000)
             except Exception:
                 pass
-            await page.wait_for_timeout(1000)
             await take_screenshot(page, "08_publish_dialog")
 
         # draft=false API が既に成功している場合（「公開」クリックで直接公開）
@@ -611,11 +690,13 @@ async def _publish(page: Page, hashtags: list[str] = None) -> bool:
         await take_screenshot(page, "08c_before_final_click")
 
         # 最終「投稿する」ボタン（拡張セレクタ）
+        # note.com の UI バリエーション: 「投稿する」「公開する」「公開に進む」等
         final_publish_selectors = [
             'button:has-text("投稿する")',
             'button:has-text("公開する")',
             'button:has-text("今すぐ公開する")',
             'button:has-text("今すぐ公開")',
+            'button:has-text("公開に進む")',
             'button:has-text("確定する")',
             'button[class*="submit"]',
             'button[class*="Submit"]',
