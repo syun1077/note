@@ -657,12 +657,6 @@ async def _publish(page: Page, hashtags: list[str] = None) -> bool:
                 pass
             await take_screenshot(page, "08_publish_dialog")
 
-        # draft=false API が既に成功している場合（「公開」クリックで直接公開）
-        if published_via_api:
-            print(f"   ✅ 記事が公開されました（API確認）")
-            await take_screenshot(page, "09_published")
-            return True
-
         # ページ上のボタンを全て確認（デバッグ）
         try:
             btn_texts = []
