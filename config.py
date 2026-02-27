@@ -111,7 +111,7 @@ GROQ_MODEL = "llama-3.3-70b-versatile"
 
 # サムネイルを自動生成してアップロードするか
 # True にすると Gemini Imagen → Pillow の順で生成を試みる
-ENABLE_THUMBNAIL = True
+ENABLE_THUMBNAIL = False
 
 # ============================================
 # 📢 通知設定（Discord / LINE）
