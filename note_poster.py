@@ -77,6 +77,13 @@ async def _safe_click(page: Page, locator, description: str = "ボタン"):
                 await _dismiss_crop_dialog(page)
                 await page.keyboard.press("Escape")
                 await page.wait_for_timeout(1500)
+                # モーダル解除直後に即リトライ（attemptカウントとは独立）
+                try:
+                    await locator.click(timeout=10000)
+                    print(f"   ✅ {description}をクリック（モーダル解除後）")
+                    return True
+                except Exception:
+                    pass
             if attempt < 2:
                 print(f"   ⚠️ {description}クリックリトライ... ({attempt + 1}/3)")
                 await page.wait_for_timeout(2000)
@@ -286,22 +293,31 @@ async def _dismiss_crop_dialog(page: Page) -> bool:
                 if await modal.count() > 0:
                     label = (frame.url or "main")[:40]
                     print(f"   🔧 モーダル検出（frame: {label}, {modal_sel}）")
-                    for text in ["保存", "完了", "OK", "適用", "確定"]:
-                        btn = modal.locator(f'button:has-text("{text}")').first
+                    await take_screenshot(page, "crop_modal_detected")
+                    # button と [role="button"] 両方を対象にテキストで探す
+                    btn_sel_base = 'button, [role="button"]'
+                    for text in ["保存", "完了", "OK", "適用", "確定", "そのまま", "使用"]:
+                        btn = modal.locator(f'{btn_sel_base}').filter(has_text=text).first
                         if await btn.count() > 0:
                             await btn.click(force=True)
                             print(f"   ✅ クロップ確認（locator: {text}）")
                             await page.wait_for_timeout(2000)
                             return True
-                    all_btns = modal.locator('button')
+                    # テキストマッチなし → 最後のボタンをクリック
+                    all_btns = modal.locator(btn_sel_base)
                     n = await all_btns.count()
+                    print(f"   🔍 モーダル内ボタン数: {n}")
                     if n > 0:
+                        # ボタンテキストをログ
+                        for bi in range(n):
+                            t = (await all_btns.nth(bi).text_content() or "").strip()
+                            print(f"      [{bi}] '{t}'")
                         await all_btns.nth(n - 1).click(force=True)
                         print(f"   ✅ クロップ確認（last button）")
                         await page.wait_for_timeout(2000)
                         return True
-            except Exception:
-                pass
+            except Exception as ex:
+                print(f"   ⚠️ Strategy B 例外: {ex}")
 
     return False
 
