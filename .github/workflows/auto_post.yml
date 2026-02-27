@@ -2,8 +2,9 @@ name: note.com 自動投稿
 
 on:
   schedule:
-    # 毎日 日本時間 午前8時 (UTC 23:00 前日) に実行
-    - cron: '0 23 * * *'
+    - cron: '0 23 * * *'  # JST 08:00
+    - cron: '0 3 * * *'   # JST 12:00
+    - cron: '0 9 * * *'   # JST 18:00
   workflow_dispatch:  # 手動実行も可能
 
 jobs:
