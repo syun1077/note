@@ -139,68 +139,45 @@ def generate_article(theme: str = None, used_themes: set = None) -> dict:
         avoid_block += "\n".join(f"- {t}" for t in recent_titles) + "\n"
 
     system_prompt = (
-        "あなたはnote.comで人気のブロガーです。"
+        "あなたはnote.comで月100万円以上を稼ぐトップクリエイターです。"
+        "有料noteで読者に『買ってよかった』と思わせる記事を書きます。"
         "ユーザーの指示に従い、必ず有効なJSONのみを返してください。"
         "JSONのキーは title, body, hashtags の3つです。"
         "余分なテキスト、コードブロック記号、説明文は一切含めないでください。"
     )
 
-    user_prompt = f"""以下のテーマでnote.com記事を書き、JSON形式で返してください。
+    user_prompt = f"""以下のテーマでnote.com有料記事を書き、JSON形式で返してください。
 
 テーマ: {theme}
 
 【今回のライティングスタイル: {persona_name}】
 {persona_desc}
 {improvement_hint}{avoid_block}
+【品質チェックリスト（全て満たすこと）】
+✅ 冒頭3行で読者を引き込む「刺さる問いかけ」がある
+✅ 「他のブログには書いていない」一次情報・数字・実例がある
+✅ 無料パートで「続きが気になる」状態を作れている
+✅ 有料パートに「すぐ使えるテンプレ・表・チェックリスト」がある
+✅ 見出しだけ読んでも記事の価値が伝わる構成になっている
+✅ 最後に読者が行動できる「次のステップ」がある
+
 スタイル要件:
 {ARTICLE_STYLE}
 
 出力形式（このJSONのみを返す）:
 {{
-  "title": "記事タイトル（キャッチーで30〜50文字）",
-  "body": "記事本文（Markdown形式、5000文字以上）",
+  "title": "記事タイトル（キャッチーで30〜50文字、数字を入れる）",
+  "body": "記事本文（Markdown形式、6000文字以上、具体的な数字・ツール名・手順を必ず入れる）",
   "hashtags": ["タグ1", "タグ2", "タグ3", "タグ4", "タグ5"]
 }}"""
 
-    # リトライ付きでAPI呼び出し
-    last_error = None
-    for attempt in range(1, MAX_RETRIES + 1):
-        try:
-            response = client.chat.completions.create(
-                model=GROQ_MODEL,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                max_tokens=8192,
-                temperature=0.7,
-                response_format={"type": "json_object"},
-            )
-            raw = response.choices[0].message.content.strip()
-            break
-        except Exception as e:
-            last_error = e
-            error_msg = str(e)
-            if "429" in error_msg or "quota" in error_msg.lower() or "rate" in error_msg.lower():
-                if attempt < MAX_RETRIES:
-                    print(f"   ⏳ レート制限。{RETRY_WAIT_SECONDS}秒待ってリトライ... ({attempt}/{MAX_RETRIES})")
-                    time.sleep(RETRY_WAIT_SECONDS)
-                else:
-                    raise Exception(f"レート制限により{MAX_RETRIES}回リトライしましたが失敗: {e}")
-            elif "json_object" in error_msg.lower() or "response_format" in error_msg.lower():
-                # response_format 非対応モデルの場合はフォールバック
-                print(f"   ⚠️ JSON mode 非対応。テキストモードで再試行...")
-                return _generate_article_text_mode(client, theme, user_prompt)
-            else:
-                raise
-    else:
-        raise Exception(f"記事生成に失敗しました: {last_error}")
+    # パス1: 初稿生成
+    raw = _call_groq(client, system_prompt, user_prompt, temperature=0.75)
 
     # JSONパース
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:
-        # JSON部分を抽出して再試行
         print(f"   ⚠️ JSONパース失敗。テキストから抽出を試みます...")
         data = _extract_json_from_text(raw)
 
@@ -208,16 +185,20 @@ def generate_article(theme: str = None, used_themes: set = None) -> dict:
     body = (data.get("body") or "").strip()
     hashtags = data.get("hashtags") or []
 
-    if isinstance(hashtags, str):
-        hashtags = [h.strip() for h in hashtags.split(",") if h.strip()]
-    hashtags = [str(h).strip().lstrip("#") for h in hashtags if h][:5]
-
-    if not hashtags:
-        hashtags = DEFAULT_HASHTAGS[:5]
-
     if not title or not body:
         print(f"   ⚠️ レスポンス内容（先頭200文字）: {raw[:200]}")
         raise ValueError(f"記事の生成に失敗しました。title={bool(title)}, body={bool(body)}")
+
+    print(f"   📝 初稿完成: {len(body)}文字")
+
+    # パス2: AIによる自己批評＆改善
+    body = _review_and_improve(client, title, body, theme)
+
+    if isinstance(hashtags, str):
+        hashtags = [h.strip() for h in hashtags.split(",") if h.strip()]
+    hashtags = [str(h).strip().lstrip("#") for h in hashtags if h][:5]
+    if not hashtags:
+        hashtags = DEFAULT_HASHTAGS[:5]
 
     print(f"✅ 記事生成完了!")
     print(f"   タイトル: {title}")
@@ -231,6 +212,87 @@ def generate_article(theme: str = None, used_themes: set = None) -> dict:
         "theme": theme,
         "persona": persona_name,
     }
+
+
+def _call_groq(client: Groq, system_prompt: str, user_prompt: str, temperature: float = 0.7) -> str:
+    """リトライ付きGroq API呼び出し。raw文字列を返す。"""
+    last_error = None
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            response = client.chat.completions.create(
+                model=GROQ_MODEL,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                max_tokens=8192,
+                temperature=temperature,
+                response_format={"type": "json_object"},
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            last_error = e
+            error_msg = str(e)
+            if "429" in error_msg or "quota" in error_msg.lower() or "rate" in error_msg.lower():
+                if attempt < MAX_RETRIES:
+                    print(f"   ⏳ レート制限。{RETRY_WAIT_SECONDS}秒待ってリトライ... ({attempt}/{MAX_RETRIES})")
+                    time.sleep(RETRY_WAIT_SECONDS)
+                else:
+                    raise Exception(f"レート制限により{MAX_RETRIES}回リトライしましたが失敗: {e}")
+            elif "json_object" in error_msg.lower() or "response_format" in error_msg.lower():
+                # JSON mode非対応 → テキストモードで再試行
+                response = client.chat.completions.create(
+                    model=GROQ_MODEL,
+                    messages=[{"role": "system", "content": system_prompt},
+                               {"role": "user", "content": user_prompt}],
+                    max_tokens=8192,
+                    temperature=temperature,
+                )
+                return response.choices[0].message.content.strip()
+            else:
+                raise
+    raise Exception(f"記事生成に失敗しました: {last_error}")
+
+
+def _review_and_improve(client: Groq, title: str, body: str, theme: str) -> str:
+    """
+    パス2: AIが自分の記事を批評し、弱い部分を書き直す。
+    改善後の本文を返す。失敗時は元の本文を返す。
+    """
+    print(f"   🔍 AIが自己批評・改善中...")
+    try:
+        review_prompt = f"""あなたは厳しい編集者です。以下のnote記事を読み、品質を向上させてください。
+
+【記事タイトル】{title}
+【テーマ】{theme}
+
+【現在の記事本文】
+{body[:4000]}{'...(以下省略)' if len(body) > 4000 else ''}
+
+【改善タスク】
+1. 具体性が低い箇所を特定し、実際の数字・ツール名・手順に置き換える
+2. 「---ここから有料---」より後の有料パートに「すぐ使えるテンプレート」か「比較表」を1つ追加する
+3. 冒頭の書き出しを「読者が思わず続きを読みたくなる」ものに書き直す
+4. 文字数が少ない場合は各セクションを深掘りして追記する（最終的に6000文字以上）
+
+改善後の記事本文全体をそのまま出力してください。JSONではなく、Markdownテキストのみを返してください。"""
+
+        response = client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[{"role": "user", "content": review_prompt}],
+            max_tokens=8192,
+            temperature=0.6,
+        )
+        improved = response.choices[0].message.content.strip()
+        if len(improved) > len(body) * 0.5:  # 半分以上の長さがあれば採用
+            print(f"   ✅ 改善完了: {len(body)}文字 → {len(improved)}文字")
+            return improved
+        else:
+            print(f"   ⚠️ 改善結果が短すぎるため元の本文を使用")
+            return body
+    except Exception as e:
+        print(f"   ⚠️ 自己批評スキップ: {e}")
+        return body
 
 
 def _generate_article_text_mode(client: Groq, theme: str, user_prompt: str) -> dict:
