@@ -88,7 +88,7 @@ def generate_article(theme: str = None, used_themes: set = None) -> dict:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
                 ],
-                max_tokens=4096,
+                max_tokens=8192,
                 temperature=0.7,
                 response_format={"type": "json_object"},
             )

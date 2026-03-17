@@ -3,3 +3,5 @@ groq>=0.8.0
 python-dotenv>=1.0.0
 requests>=2.31.0
 Pillow>=10.0.0
+google-genai>=1.0.0
+tweepy>=4.14.0
