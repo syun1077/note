@@ -136,441 +136,81 @@
     "error": null
   },
   {
-    "timestamp": "2026-02-27T06:42:10.863908",
-    "theme": "やめたら人生が好転した7つの習慣｜ミニマリスト的思考術",
-    "title": "やめたら人生が好転した7つの習慣｜ミニマリスト的思考術",
+    "timestamp": "2026-03-17T14:16:21.140649",
+    "theme": "20代から始める資産形成｜月3万円の積立で40代にFIREする計算",
+    "title": "20代から始める資産形成！月3万円の積立で40代にFIRE",
     "success": true,
     "as_draft": false,
     "error": null
   },
   {
-    "timestamp": "2026-02-27T09:46:43.817641",
-    "theme": "AIで効率化できる仕事リスト｜知らないと損する活用テクニック",
-    "title": "【最新】AIで業務効率化！知らないと損するテクニック大全",
+    "timestamp": "2026-03-17T14:24:57.506069",
+    "theme": "バズるnote記事の書き方｜PV10倍にした7つのテクニック",
+    "title": "バズるnote記事の書き方｜PV10倍にした7つのテクニック",
     "success": true,
     "as_draft": false,
     "error": null
   },
   {
-    "timestamp": "2026-02-27T23:24:46.702486",
+    "timestamp": "2026-03-17T14:30:11.337938",
     "theme": "AI時代に生き残るスキル｜今すぐ始めるべき自己投資3選",
     "title": "AI時代に生き残るスキル｜今すぐ始めるべき自己投資3選",
-    "success": true,
+    "success": false,
     "as_draft": false,
-    "error": null
+    "error": "'Locator' object has no attribute 'triple_click'"
   },
   {
-    "timestamp": "2026-02-28T04:15:44.153121",
-    "theme": "メンタルが強い人がやっている5つの習慣｜科学的に証明された方法",
-    "title": "メンタルが強い人に学ぶ！5つの科学的習慣",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-02-28T09:30:41.833054",
-    "theme": "20代から始める資産形成｜月3万円の積立で40代にFIREする計算",
-    "title": "20代から始める資産形成｜月3万円の積立で40代にFIRE",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-02-28T23:22:01.228075",
-    "theme": "新NISA完全攻略｜初心者が最初に買うべき投資信託3選",
-    "title": "新NISA完全攻略｜初心者が最初に買うべき投資信託3選",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-01T04:52:53.640585",
-    "theme": "0からSNSで収益化する方法｜フォロワー100人でも稼げる仕組み",
-    "title": "0からSNSで収益化！100人もフォロワーで月収10万円",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-01T09:34:47.833129",
-    "theme": "未経験からエンジニア転職｜30代でも成功する具体的ステップ",
-    "title": "30代でもエンジニア転職成功！具体的ステップとノウハウ",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-01T23:23:50.123931",
-    "theme": "バズるnote記事の書き方｜PV10倍にした7つのテクニック",
-    "title": "バズるnote記事の書き方｜PV10倍にした7つのテクニック",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-02T04:47:30.324693",
-    "theme": "ChatGPT仕事術｜残業ゼロを実現する具体的プロンプト集",
-    "title": "ChatGPT仕事術：残業ゼロを実現する具体的プロンプト集",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-02T09:56:26.173472",
-    "theme": "メンタルが強い人がやっている5つの習慣｜科学的に証明された方法",
-    "title": "メンタルが強い人に学べ!5つの科学的習慣",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-02T23:26:01.124398",
-    "theme": "バズるnote記事の書き方｜PV10倍にした7つのテクニック",
-    "title": "バズるnote記事の書き方｜PV10倍にした7つのテクニック",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-03T04:46:03.400361",
-    "theme": "やめたら人生が好転した7つの習慣｜ミニマリスト的思考術",
-    "title": "ミニマリスト的思考術：やめたら人生が好転した7つの習慣",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-03T09:49:00.679648",
-    "theme": "顔出しなし・匿名で稼ぐ方法｜会社バレしない副業戦略",
-    "title": "顔出しなし・匿名で稼ぐ方法｜会社バレしない副業戦略",
+    "timestamp": "2026-03-17T14:30:11.346071",
+    "theme": "AI時代に生き残るスキル｜今すぐ始めるべき自己投資3選",
+    "title": "AI時代に生き残るスキル｜今すぐ始めるべき自己投資3選",
     "success": false,
     "as_draft": false,
     "error": null
   },
   {
-    "timestamp": "2026-03-03T23:27:28.076638",
-    "theme": "noteで有料記事を売って月3万円稼ぐための戦略と実践テクニック",
-    "title": "noteで有料記事を売って月3万円稼ぐための戦略と実践テクニック",
+    "timestamp": "2026-03-17T14:32:35.966713",
+    "theme": "新NISA完全攻略｜初心者が最初に買うべき投資信託3選",
+    "title": "新NISA完全攻略 ｜ 初心者が最初に買うべき投資信託3選",
     "success": true,
     "as_draft": false,
     "error": null
   },
   {
-    "timestamp": "2026-03-04T04:28:50.005191",
-    "theme": "バズるnote記事の書き方｜PV10倍にした7つのテクニック",
-    "title": "バズるnote記事の書き方｜PV10倍にした7つのテクニック",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-04T09:45:51.309109",
-    "theme": "メンタルが強い人がやっている5つの習慣｜科学的に証明された方法",
-    "title": "メンタルが強い人の5つの習慣｜科学的に証明された方法",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-04T23:30:11.318798",
-    "theme": "noteで有料記事を売って月3万円稼ぐための戦略と実践テクニック",
-    "title": "noteで月3万円！有料記事の戦略と実践テクニック",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-05T04:44:58.547333",
-    "theme": "20代から始める資産形成｜月3万円の積立で40代にFIREする計算",
-    "title": "20代から始める資産形成｜月3万円の積立で40代にFIREする計算",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-05T09:51:30.544804",
-    "theme": "会社を辞めずにフリーランスに移行する方法｜リスクゼロの独立戦略",
-    "title": "会社を辞めずにフリーランスに移行する方法",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-05T23:51:52.847591",
-    "theme": "やめたら人生が好転した7つの習慣｜ミニマリスト的思考術",
-    "title": "ミニマリスト的思考術：やめたら人生が好転した7つの習慣",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-06T04:42:16.166295",
-    "theme": "バズるnote記事の書き方｜PV10倍にした7つのテクニック",
-    "title": "バズるnote記事の書き方｜PV10倍にした7つのテクニック",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-06T09:44:08.607171",
-    "theme": "未経験からエンジニア転職｜30代でも成功する具体的ステップ",
-    "title": "30代でエンジニア転職！具体的ステップで夢を叶える",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-06T23:27:55.822777",
-    "theme": "年収を100万円上げた転職戦略｜失敗しないキャリアチェンジの全手順",
-    "title": "年収100万円アップの転職戦略",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-07T04:21:49.369345",
-    "theme": "スマホだけで始められる副業5選｜初心者が月1万円を達成する具体的手順",
-    "title": "スマホだけで始められる副業5選｜初心者が月1万円を達成する具体的手順",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-07T09:33:18.581367",
-    "theme": "20代から始める資産形成｜月3万円の積立で40代にFIREする計算",
-    "title": "20代から始める資産形成｜月3万円の積立で40代にFIRE",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-07T23:22:32.096400",
-    "theme": "やめたら人生が好転した7つの習慣｜ミニマリスト的思考術",
-    "title": "やめたら人生が好転した7つの習慣",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-08T04:42:54.408587",
-    "theme": "AIを使った副業の始め方｜ChatGPTで月5万円稼ぐ完全ロードマップ",
-    "title": "AIを使った副業の始め方｜ChatGPTで月5万円稼ぐ完全ロードマップ",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-08T09:34:05.972592",
-    "theme": "会社を辞めずにフリーランスに移行する方法｜リスクゼロの独立戦略",
-    "title": "会社を辞めずにフリーランスに移行する方法｜リスクゼロの独立戦略",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-08T23:24:42.537472",
-    "theme": "スマホだけで始められる副業5選｜初心者が月1万円を達成する具体的手順",
-    "title": "スマホだけで始められる副業",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-09T04:50:33.622280",
-    "theme": "ChatGPT仕事術｜残業ゼロを実現する具体的プロンプト集",
-    "title": "ChatGPT仕事術：残業ゼロを実現するプロンプト集",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-09T09:57:04.287868",
+    "timestamp": "2026-03-17T14:35:39.339616",
     "theme": "AIで効率化できる仕事リスト｜知らないと損する活用テクニック",
-    "title": "AIで効率化！最も役立つ5つの仕事リスト",
+    "title": "AIで効率化できる仕事リスト｜知らないと損する活用テクニック",
     "success": true,
     "as_draft": false,
     "error": null
   },
   {
-    "timestamp": "2026-03-09T23:28:28.968256",
-    "theme": "20代から始める資産形成｜月3万円の積立で40代にFIREする計算",
-    "title": "20代から始める資産形成｜月3万円の積立で40代にFIRE",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-10T04:30:22.412341",
-    "theme": "noteで有料記事を売って月3万円稼ぐための戦略と実践テクニック",
-    "title": "noteで月3万円稼ぐ！有料記事の戦略と実践テクニック",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-10T09:51:11.733892",
-    "theme": "年収を100万円上げた転職戦略｜失敗しないキャリアチェンジの全手順",
-    "title": "年収を100万円上げた転職戦略",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-10T23:28:17.587516",
-    "theme": "AIツール徹底比較｜ChatGPT・Claude・Geminiの使い分け完全ガイド",
-    "title": "AIツール徹底比較｜ChatGPT・Claude・Geminiの使い分け完全ガイド",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-11T04:43:38.805327",
+    "timestamp": "2026-03-17T14:38:29.363942",
     "theme": "メンタルが強い人がやっている5つの習慣｜科学的に証明された方法",
-    "title": "メンタルが強い人がやっている5つの習慣｜科学的に証明された方法",
+    "title": "メンタルが強い人になる5つの科学的習慣",
     "success": true,
     "as_draft": false,
     "error": null
   },
   {
-    "timestamp": "2026-03-11T09:49:00.044204",
-    "theme": "バズるnote記事の書き方｜PV10倍にした7つのテクニック",
-    "title": "バズるnote記事の書き方｜PV10倍にした7つのテクニック",
+    "timestamp": "2026-03-17T14:41:29.197712",
+    "theme": "0からSNSで収益化する方法｜フォロワー100人でも稼げる仕組み",
+    "title": "0からSNSで収益化する方法",
     "success": true,
     "as_draft": false,
     "error": null
   },
   {
-    "timestamp": "2026-03-11T23:26:18.763863",
-    "theme": "X(Twitter)フォロワー1万人達成までにやったこと全公開",
-    "title": "X(Twitter)フォロワー1万人達成までにやったこと全公開！",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-12T04:46:31.844321",
-    "theme": "X(Twitter)フォロワー1万人達成までにやったこと全公開",
-    "title": "X(Twitter)フォロワー1万人達成！私の戦略全公開",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-12T09:50:21.026252",
-    "theme": "AIツール徹底比較｜ChatGPT・Claude・Geminiの使い分け完全ガイド",
-    "title": "AIツール徹底比較｜ChatGPT・Claude・Geminiの使い分け完全ガイド",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-12T23:29:03.820888",
-    "theme": "年収を100万円上げた転職戦略｜失敗しないキャリアチェンジの全手順",
-    "title": "年収100万円UPの転職戦略！失敗しないキャリアチェンジの全手順",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-13T04:44:09.873807",
-    "theme": "メンタルが強い人がやっている5つの習慣｜科学的に証明された方法",
-    "title": "メンタルが強い人がやっている5つの習慣｜科学的に証明された方法",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-13T09:43:33.842906",
-    "theme": "AI時代に生き残るスキル｜今すぐ始めるべき自己投資3選",
-    "title": "AI時代に生き残るための3つの必須スキル",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-13T23:28:35.009334",
-    "theme": "AIツール徹底比較｜ChatGPT・Claude・Geminiの使い分け完全ガイド",
-    "title": "AIツール徹底比較｜ChatGPT・Claude・Geminiの使い分け完全ガイド",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-14T04:42:25.911444",
-    "theme": "仮想通貨で失敗しないための基礎知識｜初心者向け完全ガイド",
-    "title": "仮想通貨で失敗しないための基礎知識｜初心者向け完全ガイド",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-14T09:38:06.378139",
-    "theme": "AIを使った副業の始め方｜ChatGPTで月5万円稼ぐ完全ロードマップ",
-    "title": "AIを使った副業の始め方｜ChatGPTで月5万円稼ぐ完全ロードマップ",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-14T23:28:20.321065",
-    "theme": "AIツール徹底比較｜ChatGPT・Claude・Geminiの使い分け完全ガイド",
-    "title": "AIツール徹底比較｜ChatGPT・Claude・Geminiの使い分け完全ガイド",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-15T05:04:51.959856",
-    "theme": "X(Twitter)フォロワー1万人達成までにやったこと全公開",
-    "title": "X(Twitter)フォロワー1万人達成！私の戦略大公開",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-15T09:39:45.004194",
-    "theme": "年収を100万円上げた転職戦略｜失敗しないキャリアチェンジの全手順",
-    "title": "年収100万円アップ！転職戦略大全",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-15T23:29:16.637814",
+    "timestamp": "2026-03-17T14:45:18.525629",
     "theme": "未経験からエンジニア転職｜30代でも成功する具体的ステップ",
-    "title": "30代でエンジニア転職！具体的ステップで成功する方法",
+    "title": "30代でもエンジニアに！未経験からの転職成功物語",
     "success": true,
     "as_draft": false,
     "error": null
   },
   {
-    "timestamp": "2026-03-16T05:13:48.765959",
-    "theme": "AIを使った副業の始め方｜ChatGPTで月5万円稼ぐ完全ロードマップ",
-    "title": "【完全ガイド】AI副業で月5万円稼ぐ方法！ChatGPT活用術",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-16T10:09:42.019754",
+    "timestamp": "2026-03-17T14:50:28.233713",
     "theme": "AI時代に生き残るスキル｜今すぐ始めるべき自己投資3選",
-    "title": "AI時代に生き残る3つのスキル",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-16T23:32:28.093465",
-    "theme": "バズるnote記事の書き方｜PV10倍にした7つのテクニック",
-    "title": "バズるnote記事の書き方｜PV10倍にした7つのテクニック",
-    "success": true,
-    "as_draft": false,
-    "error": null
-  },
-  {
-    "timestamp": "2026-03-17T04:50:50.955117",
-    "theme": "スマホだけで始められる副業5選｜初心者が月1万円を達成する具体的手順",
-    "title": "スマホだけで始められる副業5選｜初心者が月1万円を達成する",
+    "title": "AI時代に生き残るスキル：今すぐ始めるべき自己投資3選",
     "success": true,
     "as_draft": false,
     "error": null

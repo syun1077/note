@@ -34,6 +34,8 @@ def add_record(
     success: bool,
     as_draft: bool = False,
     error: str = None,
+    seo_score: int = None,
+    persona: str = None,
 ):
     """投稿記録を追加する"""
     history = load_history()
@@ -44,6 +46,8 @@ def add_record(
         "success": success,
         "as_draft": as_draft,
         "error": error,
+        "seo_score": seo_score,
+        "persona": persona,
     }
     history.append(record)
     save_history(history)

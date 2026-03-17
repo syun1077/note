@@ -3,6 +3,7 @@ note.com 自動投稿 - AI記事生成モジュール
 ========================================
 Groq API（無料）を使って記事を自動生成します。
 テーマの重複を自動防止します。
+毎回異なるペルソナで書き、過去記事のSEOスコアから自動改善します。
 """
 
 import os
@@ -19,6 +20,46 @@ load_dotenv()
 MAX_RETRIES = 3
 RETRY_WAIT_SECONDS = 65  # レート制限は通常60秒でリセット
 
+# ライティングペルソナ（毎回ランダムで切り替える）
+WRITING_PERSONAS = [
+    (
+        "体験談型",
+        "自分が実際に経験した話として書く。「私は〜した」「実際にやってみて分かったのは〜」という"
+        "一人称で書く。具体的な日付・金額・ツール名を入れて信頼感を出す。",
+    ),
+    (
+        "数字・データ型",
+        "具体的な数字・統計・比較データを多用する。「〇〇%」「〇ヶ月で〇万円」など。"
+        "表や箇条書きを活用し、読者が一目でわかる構成にする。",
+    ),
+    (
+        "専門家解説型",
+        "その分野の専門家として書く。業界の内情・裏側・専門知識を教える先生のような口調。"
+        "「実はこれを知っている人は少ない」「プロだけが使うテクニック」という切り口で書く。",
+    ),
+    (
+        "ステップ解説型",
+        "STEP1→STEP2→STEP3の順番で、初心者でも迷わない具体的な手順書として書く。"
+        "各ステップに所要時間・注意点・チェックポイントを入れる。",
+    ),
+    (
+        "失敗談型",
+        "自分の失敗・間違い・後悔から学んだことを率直に書く。"
+        "「こうすれば良かった」「やってはいけない」視点で書き、読者の共感を得る。"
+        "失敗の原因分析と再発防止策を具体的に書く。",
+    ),
+    (
+        "比較分析型",
+        "A vs B の形式で複数の選択肢を徹底比較する。"
+        "比較表・スコア・向き不向きを明示し、読者が意思決定しやすい構成にする。",
+    ),
+    (
+        "Q&A型",
+        "読者がよく抱く疑問をQ&A形式で10個以上答える。"
+        "「よくある誤解」「気になるけど聞けない質問」に正直に回答する。",
+    ),
+]
+
 
 def setup_groq():
     """Groq APIクライアントを初期化"""
@@ -26,6 +67,35 @@ def setup_groq():
     if not api_key:
         raise ValueError("GROQ_API_KEY が .env ファイルまたは環境変数に設定されていません")
     return Groq(api_key=api_key)
+
+
+def _get_improvement_hints() -> str:
+    """過去のSEOスコアから改善ヒントを取得する"""
+    try:
+        from post_history import load_history
+        history = load_history()
+        scored = [r for r in history if r.get("seo_score") is not None and r.get("success")]
+        if not scored:
+            return ""
+        avg = sum(r["seo_score"] for r in scored) / len(scored)
+        best = max(scored, key=lambda r: r["seo_score"])
+        hint = f"\n【過去記事の平均SEOスコア: {avg:.0f}点】\n"
+        hint += f"最高スコア記事（{best['seo_score']}点）のタイトル: 「{best['title']}」\n"
+        hint += "このスコアを超える記事を書いてください。\n"
+        return hint
+    except Exception:
+        return ""
+
+
+def _get_recent_titles(n: int = 5) -> list[str]:
+    """直近n件の成功タイトルを返す（重複回避用）"""
+    try:
+        from post_history import load_history
+        history = load_history()
+        recent = [r["title"] for r in history if r.get("success")][-n:]
+        return recent
+    except Exception:
+        return []
 
 
 def generate_article(theme: str = None, used_themes: set = None) -> dict:
@@ -54,8 +124,19 @@ def generate_article(theme: str = None, used_themes: set = None) -> dict:
 
         theme = random.choice(available_themes)
 
+    # ペルソナをランダム選択
+    persona_name, persona_desc = random.choice(WRITING_PERSONAS)
     print(f"📝 テーマ: {theme}")
+    print(f"✍️  ペルソナ: {persona_name}")
     print(f"🤖 AIが記事を生成中...")
+
+    # 自己改善ヒントと重複回避
+    improvement_hint = _get_improvement_hints()
+    recent_titles = _get_recent_titles()
+    avoid_block = ""
+    if recent_titles:
+        avoid_block = "\n【直近の投稿タイトル（これらと同じ内容・構成は避けること）】\n"
+        avoid_block += "\n".join(f"- {t}" for t in recent_titles) + "\n"
 
     system_prompt = (
         "あなたはnote.comで人気のブロガーです。"
@@ -68,13 +149,16 @@ def generate_article(theme: str = None, used_themes: set = None) -> dict:
 
 テーマ: {theme}
 
+【今回のライティングスタイル: {persona_name}】
+{persona_desc}
+{improvement_hint}{avoid_block}
 スタイル要件:
 {ARTICLE_STYLE}
 
 出力形式（このJSONのみを返す）:
 {{
   "title": "記事タイトル（キャッチーで30〜50文字）",
-  "body": "記事本文（Markdown形式、3000文字以上）",
+  "body": "記事本文（Markdown形式、5000文字以上）",
   "hashtags": ["タグ1", "タグ2", "タグ3", "タグ4", "タグ5"]
 }}"""
 
@@ -145,6 +229,7 @@ def generate_article(theme: str = None, used_themes: set = None) -> dict:
         "body": body,
         "hashtags": hashtags,
         "theme": theme,
+        "persona": persona_name,
     }
 
 

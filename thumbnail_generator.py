@@ -66,6 +66,11 @@ def generate_thumbnail_imagen(title: str, theme: str) -> Path | None:
     return None
 
 
+def _hex_to_rgb(hex_color: str) -> tuple:
+    h = hex_color.lstrip("#")
+    return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+
+
 def generate_thumbnail_pillow(title: str, theme: str) -> Path | None:
     """
     Pillow でテキストベースのサムネイル画像を生成する（Imagen の代替）。
@@ -76,62 +81,127 @@ def generate_thumbnail_pillow(title: str, theme: str) -> Path | None:
     try:
         from PIL import Image, ImageDraw, ImageFont
 
-        # テーマ別カラーパレット
-        THEME_COLORS = {
-            "副業": ("#1A1A2E", "#E94560"),
-            "AI":   ("#0F3460", "#16213E"),
-            "投資": ("#16213E", "#0F3460"),
-            "キャリア": ("#2C3E50", "#3498DB"),
-            "SNS":  ("#8E44AD", "#2980B9"),
+        # テーマ別カラーパレット（背景色, アクセント色, サブ色）
+        THEME_PALETTES = {
+            "副業":     ("#0D1117", "#F7931A", "#FF6B6B"),
+            "AI":       ("#050A14", "#00D4FF", "#7C3AED"),
+            "投資":     ("#0A1628", "#10B981", "#3B82F6"),
+            "キャリア": ("#1A0A2E", "#A78BFA", "#EC4899"),
+            "SNS":      ("#0F0F1A", "#FF6B9D", "#C084FC"),
+            "ポイント": ("#0A1628", "#10B981", "#3B82F6"),
+            "自己":     ("#0D1117", "#FBBF24", "#F87171"),
+            "睡眠":     ("#0A0E1A", "#818CF8", "#38BDF8"),
+            "読書":     ("#1A1208", "#D97706", "#059669"),
+            "ADHD":     ("#0D1117", "#34D399", "#60A5FA"),
+            "HSP":      ("#1A0D1A", "#F472B6", "#A78BFA"),
         }
 
-        # テーマ判定（キーワード一致）
-        bg_start, bg_end = "#1E3A5F", "#0D1B2A"
-        for keyword, colors in THEME_COLORS.items():
-            if keyword in theme or keyword in title:
-                bg_start, bg_end = colors
+        bg_color, accent, sub_accent = "#0D1117", "#00C896", "#3B82F6"
+        combined = theme + title
+        for keyword, palette in THEME_PALETTES.items():
+            if keyword in combined:
+                bg_color, accent, sub_accent = palette
                 break
 
         W, H = 1280, 720
-        img = Image.new("RGB", (W, H), bg_start)
+        bg_rgb = _hex_to_rgb(bg_color)
+
+        # グラデーション背景
+        img = Image.new("RGB", (W, H), bg_rgb)
         draw = ImageDraw.Draw(img)
 
-        # グラデーション風の背景（単純な矩形重ね）
-        from PIL import ImageFilter
+        # 左上から右下への斜めグラデーション風オーバーレイ
         overlay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        overlay_draw = ImageDraw.Draw(overlay)
-        for i in range(H):
-            alpha = int(160 * i / H)
-            overlay_draw.line([(0, i), (W, i)], fill=(0, 0, 0, alpha))
-        img.paste(overlay, (0, 0), overlay)
+        ov_draw = ImageDraw.Draw(overlay)
+        accent_rgb = _hex_to_rgb(accent)
+        for i in range(200):
+            x0, y0, x1, y1 = -50 + i, -50 + i, 400 - i, 400 - i
+            if x1 < x0 or y1 < y0:
+                break
+            alpha = int(40 * (1 - i / 200))
+            ov_draw.ellipse([x0, y0, x1, y1], fill=(*accent_rgb, alpha))
+        img = img.convert("RGBA")
+        img = Image.alpha_composite(img, overlay)
+        img = img.convert("RGB")
         draw = ImageDraw.Draw(img)
 
-        # アクセントライン
-        accent = "#00C896"
-        draw.rectangle([60, H - 80, W - 60, H - 76], fill=accent)
+        # 右側デコレーション（縦ライン群）
+        sub_rgb = _hex_to_rgb(sub_accent)
+        for xi, alpha in [(W - 20, 120), (W - 40, 80), (W - 60, 50)]:
+            line_overlay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+            lo_draw = ImageDraw.Draw(line_overlay)
+            lo_draw.rectangle([xi, 0, xi + 4, H], fill=(*sub_rgb, alpha))
+            img = img.convert("RGBA")
+            img = Image.alpha_composite(img, line_overlay)
+            img = img.convert("RGB")
+            draw = ImageDraw.Draw(img)
 
-        # テーマラベル
-        draw.rectangle([60, 60, 60 + len(theme) * 18 + 40, 110], fill=accent)
+        # 上部アクセントバー
+        accent_rgb = _hex_to_rgb(accent)
+        draw.rectangle([0, 0, W, 8], fill=accent)
+
+        # カテゴリラベル（ピル形状風）
         try:
-            font_label = ImageFont.truetype("C:/Windows/Fonts/meiryo.ttc", 28)
+            font_label = ImageFont.truetype("C:/Windows/Fonts/meiryo.ttc", 26)
         except Exception:
             font_label = ImageFont.load_default()
-        draw.text((80, 68), theme, font=font_label, fill="#FFFFFF")
 
-        # タイトルテキスト（折り返し）
+        label_text = theme[:15] if len(theme) > 15 else theme
+        label_x, label_y = 60, 50
+        label_w = max(len(label_text) * 20 + 40, 80)
+        draw.rectangle(
+            [label_x, label_y, label_x + label_w, label_y + 44],
+            fill=accent
+        )
+        draw.text((label_x + 20, label_y + 8), label_text, font=font_label, fill="#000000")
+
+        # タイトルテキスト（2段階フォントサイズ）
         try:
-            font_title = ImageFont.truetype("C:/Windows/Fonts/meiryob.ttc", 64)
+            font_title_lg = ImageFont.truetype("C:/Windows/Fonts/meiryob.ttc", 68)
+            font_title_sm = ImageFont.truetype("C:/Windows/Fonts/meiryob.ttc", 52)
         except Exception:
             try:
-                font_title = ImageFont.truetype("C:/Windows/Fonts/meiryo.ttc", 64)
+                font_title_lg = ImageFont.truetype("C:/Windows/Fonts/meiryo.ttc", 68)
+                font_title_sm = ImageFont.truetype("C:/Windows/Fonts/meiryo.ttc", 52)
             except Exception:
-                font_title = ImageFont.load_default()
+                font_title_lg = font_title_sm = ImageFont.load_default()
 
-        wrapped = textwrap.wrap(title, width=20)
-        y_text = 160
-        for line in wrapped[:3]:
-            draw.text((80, y_text), line, font=font_title, fill="#FFFFFF")
-            y_text += 80
+        # タイトルをメイン部分とサブ部分に分割（｜で分ける）
+        if "｜" in title:
+            parts = title.split("｜", 1)
+            main_title = parts[0].strip()
+            sub_title = parts[1].strip()
+        else:
+            main_title = title
+            sub_title = ""
+
+        # メインタイトル（折り返し）
+        wrapped_main = textwrap.wrap(main_title, width=18)
+        y_text = 130
+        for line in wrapped_main[:2]:
+            # テキストシャドウ
+            draw.text((82, y_text + 2), line, font=font_title_lg, fill=(0, 0, 0))
+            draw.text((80, y_text), line, font=font_title_lg, fill="#FFFFFF")
+            y_text += 82
+
+        # サブタイトル
+        if sub_title:
+            wrapped_sub = textwrap.wrap(sub_title, width=24)
+            y_text += 10
+            for line in wrapped_sub[:2]:
+                draw.text((82, y_text + 1), line, font=font_title_sm, fill=(0, 0, 0))
+                draw.text((80, y_text), line, font=font_title_sm, fill=sub_accent)
+                y_text += 62
+
+        # 下部アクセントライン
+        draw.rectangle([60, H - 60, W - 60, H - 54], fill=accent)
+
+        # note ロゴ風テキスト
+        try:
+            font_note = ImageFont.truetype("C:/Windows/Fonts/meiryo.ttc", 28)
+        except Exception:
+            font_note = ImageFont.load_default()
+        draw.text((66, H - 48), "note", font=font_note, fill=accent)
 
         fname = _safe_filename(title) + ".png"
         out_path = THUMBNAIL_DIR / fname

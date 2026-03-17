@@ -236,6 +236,8 @@ def main():
             title=article["title"],
             success=success,
             as_draft=as_draft,
+            seo_score=seo.get("score"),
+            persona=article.get("persona"),
         )
         results.append((acc["email"], success))
         if not success:

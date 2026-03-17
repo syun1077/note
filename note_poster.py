@@ -697,6 +697,16 @@ async def _publish(page: Page, hashtags: list[str] = None) -> bool:
         # 本人確認モーダルを閉じる
         await _close_identification_modal(page)
 
+        # 有料設定後のボタン一覧をデバッグ
+        try:
+            btn_texts_after = []
+            for b in await page.locator("button").all():
+                t = (await b.text_content() or "").strip()
+                if t:
+                    btn_texts_after.append(t)
+            print(f"   📋 有料設定後のボタン: {btn_texts_after[:20]}")
+        except Exception:
+            pass
         await take_screenshot(page, "08c_before_final_click")
 
         # 最終「投稿する」ボタン（拡張セレクタ）
@@ -713,6 +723,19 @@ async def _publish(page: Page, hashtags: list[str] = None) -> bool:
             'button[type="submit"]',
         ]
 
+        # 有料設定時「有料エリア設定」ボタンが出る場合は先にクリック
+        if ENABLE_PAID_ARTICLE:
+            paid_area_btn = page.locator('button:has-text("有料エリア設定")').first
+            if await paid_area_btn.count() > 0:
+                print("   💰 有料エリア設定ボタンをクリック...")
+                await paid_area_btn.click(force=True)
+                await page.wait_for_timeout(2000)
+
+        # ページ先頭にスクロールしてボタンを表示させる
+        await page.evaluate("window.scrollTo(0, 0)")
+        await page.wait_for_timeout(1000)
+
+        # まず通常の方法で探す
         final_button = await _find_element(page, final_publish_selectors, "最終公開ボタン")
         if final_button:
             await _safe_click(page, final_button, "最終公開ボタン")
@@ -723,7 +746,21 @@ async def _publish(page: Page, hashtags: list[str] = None) -> bool:
             except Exception:
                 pass
         else:
-            print("   ⚠️ 最終公開ボタンが見つかりませんでした")
+            # JavaScriptで直接クリック
+            print("   ⚠️ 最終公開ボタンが見つかりませんでした（JS クリック試行）")
+            clicked = await page.evaluate("""
+                () => {
+                    const texts = ['投稿する', '公開する', '今すぐ公開する', '今すぐ公開', '確定する'];
+                    const btns = Array.from(document.querySelectorAll('button'));
+                    const btn = btns.find(b => texts.includes((b.textContent || '').trim()));
+                    if (btn) { btn.click(); return btn.textContent.trim(); }
+                    return null;
+                }
+            """)
+            if clicked:
+                print(f"   ✅ JS クリック成功: {clicked}")
+            else:
+                print("   ❌ 投稿ボタンが見つかりませんでした")
 
         # ネットワーク処理完了を待つ
         try:
@@ -806,16 +843,20 @@ async def _set_paid_article(page: Page):
             await take_screenshot(page, "08b_paid_settings")
             return
 
-        # 価格入力欄を探す
+        # 価格入力欄を探す（有料ラジオ選択後に表示される）
+        await page.wait_for_timeout(1000)
         price_selectors = [
             'input[type="number"]',
             'input[placeholder*="価格"]',
             'input[placeholder*="円"]',
             'input[name*="price"]',
+            'input[type="text"]',
         ]
 
         price_input = await _find_element(page, price_selectors, "価格入力欄")
         if price_input:
+            await price_input.click()
+            await page.keyboard.press("Control+a")
             await price_input.fill(str(ARTICLE_PRICE))
             print(f"   ✅ 価格設定完了: ¥{ARTICLE_PRICE}")
         else:
