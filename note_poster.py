@@ -1010,8 +1010,11 @@ async def run_post(
                 await page.goto("https://note.com/", wait_until="networkidle", timeout=PAGE_TIMEOUT)
                 await page.wait_for_timeout(2000)
                 
-                login_link = page.locator('a[href="/login"], a:has-text("ログイン")')
-                if await login_link.count() > 0:
+                # ログイン済み判定：ユーザーアバターやダッシュボード要素で確認
+                logged_in = page.locator('a[href*="/dashboard"], [data-testid*="user"], button[aria-label*="アカウント"], img[alt*="アイコン"], a[href*="/settings"]')
+                login_button = page.locator('a[href="/login"][class*="button"], button:has-text("無料で始める")')
+                is_logged_in = await logged_in.count() > 0 or await login_button.count() == 0
+                if not is_logged_in:
                     print("⚠️ 認証状態が無効です。再ログインします...")
                     AUTH_STATE_FILE.unlink(missing_ok=True)
                     login_success = await login(page)
