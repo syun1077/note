@@ -723,28 +723,60 @@ async def _publish(page: Page, hashtags: list[str] = None) -> bool:
             'button[type="submit"]',
         ]
 
-        # 有料設定時「有料エリア設定」ボタンが出る場合は先にクリック
+        # 有料設定時「有料エリア設定」ボタンが出る場合
+        # → エディタに戻って有料エリアを確定 → 再度「公開に進む」→「投稿する」
         if ENABLE_PAID_ARTICLE:
             paid_area_btn = page.locator('button:has-text("有料エリア設定")').first
             if await paid_area_btn.count() > 0:
-                print("   💰 有料エリア設定ボタンをクリック...")
+                print("   💰 有料エリア設定ボタンをクリック（エディタへ戻る）...")
                 await paid_area_btn.click(force=True)
-                await page.wait_for_timeout(2000)
+                await page.wait_for_timeout(4000)
+                await take_screenshot(page, "08d_paid_area_editor")
+
+                # エディタ上で有料エリア確定ボタンを探す
+                confirm_selectors = [
+                    'button:has-text("確認")',
+                    'button:has-text("設定する")',
+                    'button:has-text("ここを有料にする")',
+                    'button:has-text("有料エリアを設定")',
+                    'button:has-text("決定")',
+                ]
+                confirm_btn = await _find_element(page, confirm_selectors, "有料エリア確認ボタン")
+                if confirm_btn:
+                    await _safe_click(page, confirm_btn, "有料エリア確認")
+                    await page.wait_for_timeout(2000)
+
+                # エディタから再度「公開に進む」をクリック
+                publish_again_selectors = [
+                    'button:has-text("公開設定")',
+                    'button:has-text("公開に進む")',
+                    'button:has-text("公開")',
+                ]
+                publish_again = await _find_element(page, publish_again_selectors, "公開設定ボタン(再)")
+                if publish_again:
+                    print("   🔄 公開設定を再クリック...")
+                    await _safe_click(page, publish_again, "公開設定ボタン(再)")
+                    try:
+                        await page.wait_for_url("**/publish/**", timeout=8000)
+                    except Exception:
+                        pass
+                    await page.wait_for_timeout(2000)
+
+                    # 有料設定を再適用（価格が消えている場合のみ）
+                    price_check = page.locator('input[type="number"]')
+                    if await price_check.count() == 0:
+                        await _set_paid_article(page)
+                    await take_screenshot(page, "08e_republish_page")
 
         # ページ先頭にスクロールしてボタンを表示させる
         await page.evaluate("window.scrollTo(0, 0)")
         await page.wait_for_timeout(1000)
 
-        # まず通常の方法で探す
+        # 最終「投稿する」ボタンをクリック
         final_button = await _find_element(page, final_publish_selectors, "最終公開ボタン")
         if final_button:
             await _safe_click(page, final_button, "最終公開ボタン")
             await page.wait_for_timeout(500)
-            print("   → dispatchEvent クリックも実行...")
-            try:
-                await final_button.dispatch_event("click")
-            except Exception:
-                pass
         else:
             # JavaScriptで直接クリック
             print("   ⚠️ 最終公開ボタンが見つかりませんでした（JS クリック試行）")
@@ -844,20 +876,29 @@ async def _set_paid_article(page: Page):
             return
 
         # 価格入力欄を探す（有料ラジオ選択後に表示される）
-        await page.wait_for_timeout(1000)
+        # wait_for_selector で確実に待つ
+        price_input = None
+        try:
+            await page.wait_for_selector(
+                'input[type="number"], input[placeholder*="価格"], input[placeholder*="円"]',
+                timeout=5000
+            )
+        except Exception:
+            pass
+
         price_selectors = [
             'input[type="number"]',
             'input[placeholder*="価格"]',
             'input[placeholder*="円"]',
             'input[name*="price"]',
-            'input[type="text"]',
         ]
-
         price_input = await _find_element(page, price_selectors, "価格入力欄")
         if price_input:
             await price_input.click()
             await page.keyboard.press("Control+a")
             await price_input.fill(str(ARTICLE_PRICE))
+            await page.keyboard.press("Tab")
+            await page.wait_for_timeout(500)
             print(f"   ✅ 価格設定完了: ¥{ARTICLE_PRICE}")
         else:
             print("   ⚠️ 価格入力欄が見つかりませんでした")
