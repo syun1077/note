@@ -36,6 +36,7 @@ def add_record(
     error: str = None,
     seo_score: int = None,
     persona: str = None,
+    url: str = None,
 ):
     """投稿記録を追加する"""
     history = load_history()
@@ -48,10 +49,21 @@ def add_record(
         "error": error,
         "seo_score": seo_score,
         "persona": persona,
+        "url": url,
     }
     history.append(record)
     save_history(history)
     return record
+
+
+def get_recent_articles_with_url(n: int = 5) -> list[dict]:
+    """URLを持つ直近n件の成功記事を返す（関連記事リンク用）"""
+    history = load_history()
+    with_url = [
+        r for r in history
+        if r.get("success") and not r.get("as_draft") and r.get("url") and r.get("title")
+    ]
+    return with_url[-n:]
 
 
 def get_used_themes() -> set[str]:

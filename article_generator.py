@@ -98,6 +98,26 @@ def _get_recent_titles(n: int = 5) -> list[str]:
         return []
 
 
+def _get_related_articles_block() -> str:
+    """過去記事のリンクブロックを生成する（記事末尾に挿入）"""
+    try:
+        from post_history import get_recent_articles_with_url
+        articles = get_recent_articles_with_url(n=4)
+        if not articles:
+            return ""
+        lines = ["\n---\n\n## 関連記事もチェックしてください\n"]
+        for a in articles:
+            title = a.get("title", "")
+            url = a.get("url", "")
+            if title and url:
+                lines.append(f"- [{title}]({url})")
+        if len(lines) <= 1:
+            return ""
+        return "\n".join(lines) + "\n"
+    except Exception:
+        return ""
+
+
 def generate_article(theme: str = None, used_themes: set = None) -> dict:
     """
     AIを使って記事を生成する
@@ -146,6 +166,9 @@ def generate_article(theme: str = None, used_themes: set = None) -> dict:
         "余分なテキスト、コードブロック記号、説明文は一切含めないでください。"
     )
 
+    # 関連記事リンクを取得（過去記事の末尾挿入用）
+    related_articles_block = _get_related_articles_block()
+
     user_prompt = f"""以下のテーマでnote.com有料記事を書き、JSON形式で返してください。
 
 テーマ: {theme}
@@ -161,12 +184,22 @@ def generate_article(theme: str = None, used_themes: set = None) -> dict:
 ✅ 見出しだけ読んでも記事の価値が伝わる構成になっている
 ✅ 最後に読者が行動できる「次のステップ」がある
 
+【Googleキーワード戦略（必須）】
+タイトルには以下のパターンを必ず含めること：
+- 「〇〇 やり方」「〇〇 方法」「〇〇 おすすめ」「〇〇 比較」など検索フレーズ
+- 「初心者」「無料」「完全ガイド」「実録」「徹底解説」など検索される修飾語
+- 数字（「3つの」「7日で」「月3万円」「87%」など）を必ず入れる
+- Googleで検索されやすい自然な日本語フレーズを優先する
+
 スタイル要件:
 {ARTICLE_STYLE}
 
+本文末尾に以下のブロックをそのまま追記してください（修正不要）:
+{related_articles_block}
+
 出力形式（このJSONのみを返す）:
 {{
-  "title": "記事タイトル（キャッチーで30〜50文字、数字を入れる）",
+  "title": "記事タイトル（Googleで検索されやすい30〜50文字、数字を入れる）",
   "body": "記事本文（Markdown形式、6000文字以上、具体的な数字・ツール名・手順を必ず入れる）",
   "hashtags": ["タグ1", "タグ2", "タグ3", "タグ4", "タグ5"]
 }}"""

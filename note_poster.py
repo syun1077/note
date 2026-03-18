@@ -566,10 +566,10 @@ async def post_article(page: Page, title: str, body: str, hashtags: list[str], a
     # === 公開 or 下書き保存 ===
     if as_draft:
         success = await _save_as_draft(page)
+        return success, None
     else:
-        success = await _publish(page, hashtags=hashtags)
-    
-    return success
+        success, note_url = await _publish(page, hashtags=hashtags)
+        return success, note_url
 
 
 async def _add_hashtags(page: Page, hashtags: list[str]):
@@ -623,6 +623,20 @@ async def _publish(page: Page, hashtags: list[str] = None) -> bool:
             if "draft=false" in url:
                 published_via_api.append(url)
                 print(f"   ✅ 公開API検出 (draft=false → 200)")
+                # APIレスポンスから公開URLを取得
+                try:
+                    data = await response.json()
+                    note_url = (
+                        (data.get("data") or {}).get("note_url")
+                        or (data.get("data") or {}).get("url")
+                        or data.get("note_url")
+                        or data.get("url")
+                    )
+                    if note_url and "note.com" in str(note_url):
+                        published_via_api.append(f"__url__{note_url}")
+                        print(f"   🔗 公開URL取得: {note_url}")
+                except Exception:
+                    pass
 
     page.on("response", _on_response)
 
@@ -800,11 +814,19 @@ async def _publish(page: Page, hashtags: list[str] = None) -> bool:
         except Exception:
             pass
 
-        # APIベースで再確認
+        # APIベースで再確認 + URLを取得
+        note_url = None
+        for item in published_via_api:
+            if isinstance(item, str) and item.startswith("__url__"):
+                note_url = item.replace("__url__", "")
+                break
+
         if published_via_api:
             print(f"   ✅ 記事が公開されました（API確認）")
+            if note_url:
+                print(f"   🔗 URL: {note_url}")
             await take_screenshot(page, "09_published")
-            return True
+            return True, note_url
 
         # URL変化で確認
         try:
@@ -828,10 +850,10 @@ async def _publish(page: Page, hashtags: list[str] = None) -> bool:
         current_url = page.url
         if "/publish/" in current_url or "/notes/new" in current_url or "/edit" in current_url:
             print(f"   ⚠️ 公開結果が不明です。URL: {current_url}")
-            return False
+            return False, None
         else:
             print(f"   ✅ 記事公開成功! URL: {current_url}")
-            return True
+            return True, current_url
 
     finally:
         page.remove_listener("response", _on_response)
@@ -1000,12 +1022,12 @@ async def run_post(
                     print("✅ 認証状態は有効です")
             
             # 記事投稿
-            success = await post_article(page, title, body, hashtags, as_draft, thumbnail_path)
-            return success
+            success, note_url = await post_article(page, title, body, hashtags, as_draft, thumbnail_path)
+            return success, note_url
             
         except Exception as e:
             print(f"❌ エラーが発生しました: {e}")
             await take_screenshot(page, "error_exception")
-            raise
+            return False, None
         finally:
             await browser.close()

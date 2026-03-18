@@ -176,9 +176,22 @@ def main():
 
     from note_poster import run_post
     import note_poster as _np
+    import config as _config
     from pathlib import Path
 
     as_draft = args.draft or os.getenv("POST_AS_DRAFT", "false").lower() == "true"
+
+    # ────────────────────────────────────────────────
+    # 10本に1本は無料公開（SEO流入を増やす戦略）
+    # ────────────────────────────────────────────────
+    from post_history import get_stats
+    current_success_count = get_stats()["success"]
+    is_free_article = not as_draft and (current_success_count + 1) % 10 == 0
+    if is_free_article:
+        print("\n   ℹ️  この記事は無料公開します（10本に1本の無料戦略・SEO流入狙い）")
+        _config.ENABLE_PAID_ARTICLE = False
+    else:
+        _config.ENABLE_PAID_ARTICLE = True
 
     all_success = True
     results = []
@@ -198,8 +211,9 @@ def main():
         if acc["index"]:
             _np.AUTH_STATE_FILE = Path(f"auth_state_{acc['index']}.json")
 
+        note_url = None
         try:
-            success = asyncio.run(
+            success, note_url = asyncio.run(
                 run_post(
                     title=article["title"],
                     body=article["body"],
@@ -238,6 +252,7 @@ def main():
             as_draft=as_draft,
             seo_score=seo.get("score"),
             persona=article.get("persona"),
+            url=note_url,
         )
         results.append((acc["email"], success))
         if not success:
