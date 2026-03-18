@@ -224,5 +224,27 @@
     "error": null,
     "seo_score": 100,
     "persona": "失敗談型"
+  },
+  {
+    "timestamp": "2026-03-18T02:53:23.465365",
+    "theme": "ミニマリスト歴3年で手放してよかったもの・手放して後悔したもの全リスト",
+    "title": "ミニマリスト3年目での手放し方の比較分析：初心者も上手に手放すための87%成功法",
+    "success": false,
+    "as_draft": false,
+    "error": "cannot unpack non-iterable bool object",
+    "seo_score": null,
+    "persona": null,
+    "url": null
+  },
+  {
+    "timestamp": "2026-03-18T02:53:23.466177",
+    "theme": "ミニマリスト歴3年で手放してよかったもの・手放して後悔したもの全リスト",
+    "title": "ミニマリスト3年目での手放し方の比較分析：初心者も上手に手放すための87%成功法",
+    "success": false,
+    "as_draft": false,
+    "error": null,
+    "seo_score": 93,
+    "persona": "比較分析型",
+    "url": null
   }
 ]
