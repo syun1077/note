@@ -451,6 +451,9 @@ async def post_article(page: Page, title: str, body: str, hashtags: list[str], a
     # === サムネイルアップロード ===
     if ENABLE_THUMBNAIL and thumbnail_path:
         await _upload_thumbnail(page, thumbnail_path)
+        # アップロード後のクロップダイアログを必ず閉じてからタイトル入力へ
+        await _dismiss_crop_dialog(page)
+        await page.wait_for_timeout(1500)
 
     # === タイトル入力 ===
     title_selectors = [
@@ -471,19 +474,38 @@ async def post_article(page: Page, title: str, body: str, hashtags: list[str], a
         await page.wait_for_timeout(1000)
 
     if title_input is None:
-        # 最終手段：最初のtextareaを使用
-        all_textareas = page.locator('textarea')
-        count = await all_textareas.count()
-        if count > 0:
-            title_input = all_textareas.first
-            print(f"   ⚠️ タイトル入力欄をフォールバック検出 (textarea数:{count})")
-        else:
-            raise Exception("タイトル入力欄が見つかりません")
-
-    await title_input.scroll_into_view_if_needed()
-    await title_input.click(timeout=15000)
-    await page.wait_for_timeout(500)
-    await title_input.fill(title)
+        # JavaScriptでページ内の全入力要素を確認してデバッグ
+        all_inputs = await page.evaluate("""() => {
+            const els = document.querySelectorAll('textarea, div[contenteditable]');
+            return Array.from(els).map(e => ({
+                tag: e.tagName, placeholder: e.placeholder || e.getAttribute('placeholder') || '',
+                cls: e.className.substring(0, 60), visible: e.offsetParent !== null
+            }));
+        }""")
+        print(f"   ⚠️ 検出された入力要素: {all_inputs[:5]}")
+        # JSで直接入力
+        await page.evaluate(f"""() => {{
+            const el = document.querySelector('textarea') || document.querySelector('div[contenteditable]');
+            if (el) {{ el.focus(); el.value = {repr(title)}; el.dispatchEvent(new Event('input', {{bubbles:true}})); }}
+        }}""")
+        print("   ⚠️ JavaScriptでタイトル入力（フォールバック）")
+    else:
+        print("   🔷 [タイトルクリック前]")
+        try:
+            await title_input.click(timeout=10000)
+        except Exception as e:
+            print(f"   ⚠️ タイトルクリック失敗（force試行）: {e}")
+            await title_input.click(force=True, timeout=10000)
+        await page.wait_for_timeout(500)
+        print("   🔷 [タイトルfill前]")
+        try:
+            await title_input.fill(title)
+        except Exception as e:
+            print(f"   ⚠️ タイトルfill失敗（JS fallback）: {e}")
+            await page.evaluate(f"""() => {{
+                const el = document.querySelector('textarea') || document.querySelector('div[contenteditable]');
+                if (el) {{ el.focus(); el.value = {repr(title)}; el.dispatchEvent(new Event('input', {{bubbles:true}})); }}
+            }}""")
     await page.wait_for_timeout(1000)
     
     print("   ✅ タイトル入力完了")
@@ -519,7 +541,15 @@ async def post_article(page: Page, title: str, body: str, hashtags: list[str], a
         return False
     
     # 本文を入力（段落ごと）
-    await body_input.click()
+    print("   🔷 [本文クリック前]")
+    try:
+        await body_input.click(timeout=10000)
+    except Exception as e:
+        print(f"   ⚠️ 本文クリック失敗（force試行）: {e}")
+        try:
+            await body_input.click(force=True, timeout=10000)
+        except Exception as e2:
+            print(f"   ⚠️ 本文forceクリックも失敗（続行）: {e2}")
     await page.wait_for_timeout(500)
 
     # 画像マーカーを事前にダウンロード
@@ -603,11 +633,15 @@ async def _add_hashtags(page: Page, hashtags: list[str]):
         return
     
     for tag in hashtags[:5]:
-        await tag_input.fill(tag)
+        try:
+            await tag_input.fill(tag)
+        except Exception as e:
+            print(f"   ⚠️ タグ入力失敗（スキップ）: {e}")
+            break
         await page.wait_for_timeout(500)
         await page.keyboard.press("Enter")
         await page.wait_for_timeout(500)
-    
+
     print(f"   ✅ ハッシュタグ追加完了")
     await take_screenshot(page, "07_hashtags_added")
 
@@ -704,8 +738,12 @@ async def _publish(page: Page, hashtags: list[str] = None) -> bool:
                 print("   🏷️ 公開設定ページでタグを入力中...")
                 tag_input = tag_input_dialog.first
                 for tag in hashtags[:5]:
-                    await tag_input.click()
-                    await tag_input.fill("")
+                    try:
+                        await tag_input.click(timeout=5000)
+                        await tag_input.fill("")
+                    except Exception as e:
+                        print(f"   ⚠️ タグ入力欄クリック失敗（スキップ）: {e}")
+                        break
                     await page.keyboard.type(tag, delay=30)
                     await page.wait_for_timeout(500)
                     await page.keyboard.press("Enter")
@@ -867,6 +905,10 @@ async def _publish(page: Page, hashtags: list[str] = None) -> bool:
             print(f"   ✅ 記事公開成功! URL: {current_url}")
             return True, current_url
 
+    except Exception as e:
+        print(f"   ❌ _publish内でエラー: {type(e).__name__}: {e}")
+        await take_screenshot(page, "error_in_publish")
+        return False, None
     finally:
         page.remove_listener("response", _on_response)
 
@@ -928,12 +970,16 @@ async def _set_paid_article(page: Page):
         ]
         price_input = await _find_element(page, price_selectors, "価格入力欄")
         if price_input:
-            await price_input.click()
-            await page.keyboard.press("Control+a")
-            await price_input.fill(str(ARTICLE_PRICE))
-            await page.keyboard.press("Tab")
-            await page.wait_for_timeout(500)
-            print(f"   ✅ 価格設定完了: ¥{ARTICLE_PRICE}")
+            print("   🔷 [価格入力クリック前]")
+            try:
+                await price_input.click(timeout=5000)
+                await page.keyboard.press("Control+a")
+                await price_input.fill(str(ARTICLE_PRICE))
+                await page.keyboard.press("Tab")
+                await page.wait_for_timeout(500)
+                print(f"   ✅ 価格設定完了: ¥{ARTICLE_PRICE}")
+            except Exception as e:
+                print(f"   ⚠️ 価格入力失敗（スキップ）: {e}")
         else:
             print("   ⚠️ 価格入力欄が見つかりませんでした")
     else:
