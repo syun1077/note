@@ -448,6 +448,13 @@ async def post_article(page: Page, title: str, body: str, hashtags: list[str], a
     await page.wait_for_timeout(5000)
     await take_screenshot(page, "04_new_post_page")
 
+    # ログインページへリダイレクトされていたら認証失効 → 呼び出し元に通知
+    if "login" in page.url.lower():
+        print(f"   ⚠️ 新規投稿ページでログインリダイレクト検出: {page.url}")
+        print("   → 認証状態が失効しています。auth_state.json を削除して再ログインが必要です。")
+        await take_screenshot(page, "error_login_redirect")
+        return False, None
+
     # === サムネイルアップロード ===
     if ENABLE_THUMBNAIL and thumbnail_path:
         await _upload_thumbnail(page, thumbnail_path)
@@ -538,8 +545,8 @@ async def post_article(page: Page, title: str, body: str, hashtags: list[str], a
     if body_input is None:
         print("   ❌ 本文入力欄が見つかりませんでした")
         await take_screenshot(page, "error_no_body_input")
-        return False
-    
+        return False, None
+
     # 本文を入力（段落ごと）
     print("   🔷 [本文クリック前]")
     try:
@@ -1062,28 +1069,43 @@ async def run_post(
                 login_success = await login(page)
                 if not login_success:
                     print("❌ ログイン失敗のため処理を中断します")
-                    return False
+                    return False, None
             else:
                 # 認証状態があっても有効か確認
                 await page.goto("https://note.com/", wait_until="networkidle", timeout=PAGE_TIMEOUT)
                 await page.wait_for_timeout(2000)
                 
-                # ログイン済み判定：ユーザーアバターやダッシュボード要素で確認
-                logged_in = page.locator('a[href*="/dashboard"], [data-testid*="user"], button[aria-label*="アカウント"], img[alt*="アイコン"], a[href*="/settings"]')
-                login_button = page.locator('a[href="/login"][class*="button"], button:has-text("無料で始める")')
-                is_logged_in = await logged_in.count() > 0 or await login_button.count() == 0
+                # ログイン済み判定：URLがloginでないこと + ログイン済み要素の存在
+                is_login_page = "login" in page.url.lower()
+                logged_in = page.locator('a[href*="/dashboard"], [data-testid*="user"], button[aria-label*="アカウント"], img[alt*="アイコン"], a[href*="/settings"], a[href*="/notes/new"]')
+                is_logged_in = not is_login_page and await logged_in.count() > 0
                 if not is_logged_in:
                     print("⚠️ 認証状態が無効です。再ログインします...")
                     AUTH_STATE_FILE.unlink(missing_ok=True)
                     login_success = await login(page)
                     if not login_success:
                         print("❌ 再ログイン失敗のため処理を中断します")
-                        return False
+                        return False, None
                 else:
                     print("✅ 認証状態は有効です")
             
             # 記事投稿
             success, note_url = await post_article(page, title, body, hashtags, as_draft, thumbnail_path)
+
+            # 投稿ページでログインリダイレクトが発生した場合は再ログインして再試行
+            if not success and note_url is None:
+                current_url = page.url
+                if "login" in current_url.lower():
+                    print("⚠️ 投稿中にセッション切れを検出。再ログインして再試行します...")
+                    AUTH_STATE_FILE.unlink(missing_ok=True)
+                    login_success = await login(page)
+                    if login_success:
+                        success, note_url = await post_article(
+                            page, title, body, hashtags, as_draft, thumbnail_path
+                        )
+                    else:
+                        print("❌ 再ログイン失敗")
+
             return success, note_url
             
         except Exception as e:
