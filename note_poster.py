@@ -445,13 +445,13 @@ async def post_article(page: Page, title: str, body: str, hashtags: list[str], a
 
     # 記事作成ページへ移動
     await page.goto(NOTE_NEW_POST_URL, wait_until="networkidle", timeout=PAGE_TIMEOUT)
-    await page.wait_for_timeout(3000)
+    await page.wait_for_timeout(5000)
     await take_screenshot(page, "04_new_post_page")
 
     # === サムネイルアップロード ===
     if ENABLE_THUMBNAIL and thumbnail_path:
         await _upload_thumbnail(page, thumbnail_path)
-    
+
     # === タイトル入力 ===
     title_selectors = [
         'textarea[placeholder*="タイトル"]',
@@ -462,14 +462,26 @@ async def post_article(page: Page, title: str, body: str, hashtags: list[str], a
         'div[contenteditable="true"][class*="Title"]',
         'textarea:first-of-type',
     ]
-    
-    title_input = await _find_element(page, title_selectors, "タイトル入力欄")
+
+    # エディタが完全にロードされるまで最大10秒待機
+    for _ in range(10):
+        title_input = await _find_element(page, title_selectors, "タイトル入力欄")
+        if title_input is not None:
+            break
+        await page.wait_for_timeout(1000)
+
     if title_input is None:
-        # 最終手段
-        title_input = page.locator('textarea, div[contenteditable="true"]').first
-        print("   ⚠️ タイトル入力欄をフォールバック検出")
-    
-    await title_input.click()
+        # 最終手段：最初のtextareaを使用
+        all_textareas = page.locator('textarea')
+        count = await all_textareas.count()
+        if count > 0:
+            title_input = all_textareas.first
+            print(f"   ⚠️ タイトル入力欄をフォールバック検出 (textarea数:{count})")
+        else:
+            raise Exception("タイトル入力欄が見つかりません")
+
+    await title_input.scroll_into_view_if_needed()
+    await title_input.click(timeout=15000)
     await page.wait_for_timeout(500)
     await title_input.fill(title)
     await page.wait_for_timeout(1000)
