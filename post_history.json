@@ -345,5 +345,16 @@
     "seo_score": 100,
     "persona": "失敗談型",
     "url": null
+  },
+  {
+    "timestamp": "2026-03-19T15:15:13.292947",
+    "theme": "Perplexity vs ChatGPT｜リサーチ業務に本当に使えるのはどちらか検証",
+    "title": "Perplexity vs ChatGPT：リサーチ業務の生産性を87%向上させる方法比較",
+    "success": false,
+    "as_draft": false,
+    "error": null,
+    "seo_score": 100,
+    "persona": "数字・データ型",
+    "url": null
   }
 ]
