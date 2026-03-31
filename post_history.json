@@ -752,5 +752,16 @@
     "seo_score": 100,
     "persona": "失敗談型",
     "url": null
+  },
+  {
+    "timestamp": "2026-03-31T23:36:06.761739",
+    "theme": "Kindle出版で月2万円｜誰も教えない原稿ゼロから出版する実録手順",
+    "title": "Kindle出版で月2万円を稼ぐ方法：初心者が実践した原稿ゼロから出版する実録手順",
+    "success": false,
+    "as_draft": false,
+    "error": null,
+    "seo_score": 73,
+    "persona": "体験談型",
+    "url": null
   }
 ]
