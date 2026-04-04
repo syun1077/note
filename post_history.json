@@ -862,5 +862,16 @@
     "seo_score": 100,
     "persona": "Q&A型",
     "url": null
+  },
+  {
+    "timestamp": "2026-04-04T04:50:26.041443",
+    "theme": "Upworkで初案件を獲得した英語力ゼロのフリーランス戦略",
+    "title": "Upwork初案件獲得！英語力ゼロのフリーランス戦略：3つの失敗から学んだ実践的なアプローチ",
+    "success": false,
+    "as_draft": false,
+    "error": null,
+    "seo_score": 93,
+    "persona": "失敗談型",
+    "url": null
   }
 ]
