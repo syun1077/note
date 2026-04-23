@@ -1511,5 +1511,16 @@
     "seo_score": 100,
     "persona": "専門家解説型",
     "url": null
+  },
+  {
+    "timestamp": "2026-04-23T23:46:07.167417",
+    "theme": "Upworkで初案件を獲得した英語力ゼロのフリーランス戦略",
+    "title": "Upwork初心者が月30万円稼ぐ完全ガイド！87%の成功率で初案件を獲得するやり方",
+    "success": false,
+    "as_draft": false,
+    "error": null,
+    "seo_score": 100,
+    "persona": "Q&A型",
+    "url": null
   }
 ]
