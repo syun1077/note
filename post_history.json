@@ -1797,5 +1797,16 @@
     "seo_score": 93,
     "persona": "体験談型",
     "url": null
+  },
+  {
+    "timestamp": "2026-05-02T23:44:09.277097",
+    "theme": "ローカルLLM（Ollama）で社外秘データを安全にAI活用する方法",
+    "title": "社外秘データを安全にAI活用するOllamaの3つのやり方：初心者でも簡単に実現できる99%の効果",
+    "success": false,
+    "as_draft": false,
+    "error": null,
+    "seo_score": 73,
+    "persona": "失敗談型",
+    "url": null
   }
 ]
