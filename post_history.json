@@ -1852,5 +1852,16 @@
     "seo_score": 73,
     "persona": "比較分析型",
     "url": null
+  },
+  {
+    "timestamp": "2026-05-04T11:09:23.834319",
+    "theme": "Notionと連携するGPT自動化テンプレート集｜ゼロからの構築手順",
+    "title": "NotionとGPTを連携する自動化テンプレート7つ！初心者でも簡単実装可能",
+    "success": false,
+    "as_draft": false,
+    "error": null,
+    "seo_score": 80,
+    "persona": "失敗談型",
+    "url": null
   }
 ]
