@@ -1918,5 +1918,16 @@
     "seo_score": 93,
     "persona": "数字・データ型",
     "url": null
+  },
+  {
+    "timestamp": "2026-05-06T11:11:15.425395",
+    "theme": "ローカルLLM（Ollama）で社外秘データを安全にAI活用する方法",
+    "title": "社外秘データを安全にAI活用する方法：Ollama vs Google Cloud AI Platform徹底比較！87%の生産性向上を実現",
+    "success": false,
+    "as_draft": false,
+    "error": null,
+    "seo_score": 83,
+    "persona": "比較分析型",
+    "url": null
   }
 ]
