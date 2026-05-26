@@ -2556,5 +2556,16 @@
     "seo_score": 93,
     "persona": "失敗談型",
     "url": null
+  },
+  {
+    "timestamp": "2026-05-26T00:06:39.201484",
+    "theme": "プロンプトエンジニアが使う『ロールプロンプト』設計の全技法",
+    "title": "プロンプトエンジニアの『ロールプロンプト』設計の全技法：87%の効果向上を実現する7つの方法",
+    "success": false,
+    "as_draft": false,
+    "error": null,
+    "seo_score": 83,
+    "persona": "体験談型",
+    "url": null
   }
 ]
