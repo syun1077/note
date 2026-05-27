@@ -2578,5 +2578,16 @@
     "seo_score": 83,
     "persona": "比較分析型",
     "url": null
+  },
+  {
+    "timestamp": "2026-05-27T00:05:19.203922",
+    "theme": "Geminiで英語メール返信を3分で終わらせるプロンプト設計書",
+    "title": "Geminiで英語メール返信を3分で終わらせるプロンプト設計書：初心者でも使える7つのテンプレと実践例",
+    "success": false,
+    "as_draft": false,
+    "error": null,
+    "seo_score": 100,
+    "persona": "専門家解説型",
+    "url": null
   }
 ]
