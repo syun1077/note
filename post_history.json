@@ -2754,5 +2754,16 @@
     "seo_score": 100,
     "persona": "Q&A型",
     "url": null
+  },
+  {
+    "timestamp": "2026-06-01T08:34:49.731967",
+    "theme": "AIで議事録→タスク自動化｜Zapier不要で動くWorkflow設計図",
+    "title": "AIで議事録→タスク自動化の徹底ガイド：87%の生産性向上を実現する7つのステップ",
+    "success": false,
+    "as_draft": false,
+    "error": null,
+    "seo_score": 93,
+    "persona": "専門家解説型",
+    "url": null
   }
 ]
