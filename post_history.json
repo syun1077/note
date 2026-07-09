@@ -3997,5 +3997,16 @@
     "seo_score": 100,
     "persona": "失敗談型",
     "url": null
+  },
+  {
+    "timestamp": "2026-07-09T00:10:33.391190",
+    "theme": "ChatGPTで確定申告を半自動化する方法｜個人事業主向け完全版",
+    "title": "ChatGPTで確定申告を半自動化する方法【初心者向け完全ガイド】87%の手間を省ける！",
+    "success": false,
+    "as_draft": false,
+    "error": null,
+    "seo_score": 83,
+    "persona": "Q&A型",
+    "url": null
   }
 ]
