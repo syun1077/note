@@ -4855,5 +4855,16 @@
     "seo_score": 100,
     "persona": "ステップ解説型",
     "url": null
+  },
+  {
+    "timestamp": "2026-08-04T00:09:51.417963",
+    "theme": "プロンプトエンジニアが使う『ロールプロンプト』設計の全技法",
+    "title": "プロンプトエンジニアのためのロールプロンプト設計比較：7つのやり方と87%の成功率",
+    "success": false,
+    "as_draft": false,
+    "error": null,
+    "seo_score": 100,
+    "persona": "Q&A型",
+    "url": null
   }
 ]
