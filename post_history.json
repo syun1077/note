@@ -4899,5 +4899,16 @@
     "seo_score": 73,
     "persona": "Q&A型",
     "url": null
+  },
+  {
+    "timestamp": "2026-08-05T05:45:08.353010",
+    "theme": "AIで議事録→タスク自動化｜Zapier不要で動くWorkflow設計図",
+    "title": "AI議事録自動化の3つのやり方比較！87%の生産性向上を実現するZapier不要ワークフロー",
+    "success": false,
+    "as_draft": false,
+    "error": null,
+    "seo_score": 83,
+    "persona": "比較分析型",
+    "url": null
   }
 ]
